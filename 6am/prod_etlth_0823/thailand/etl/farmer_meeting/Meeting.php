@@ -306,6 +306,7 @@ class Meeting extends DB
                             host_name      = '{$meetingRNAField['host_name']}',
                             host_phone      = '{$meetingRNAField['host_phone']}',
                             month      = '{$meetingRNAField['month']}',
+                            status = '{$meetingRNAField['status']}',
                             products      = '{$meetingRNAField['products']}',
                             territory_id      = '{$meetingRNAField['territory_id']}',
                             zone_id      = '{$meetingRNAField['zone_id']}',

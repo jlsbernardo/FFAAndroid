@@ -398,6 +398,7 @@ class Demo extends DB
                             host_name      = '{$demoRNAField['host_name']}',
                             host_phone      = '{$demoRNAField['host_phone']}',
                             month      = '{$demoRNAField['month']}',
+                            status = '{$demoRNAField['status']}',
                             product_id      = '{$demoRNAField['product_id']}',
                             product_detail      = '{$demoRNAField['product_detail']}',
                             product_caption      = '{$demoRNAField['product_caption']}',
