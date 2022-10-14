@@ -302,6 +302,7 @@ class Retailer extends DB
                             host_name      = '{$retailerRNAField['host_name']}',
                             host_phone      = '{$retailerRNAField['host_phone']}',
                             month      = '{$retailerRNAField['month']}',
+                            status = '{$retailerRNAField['status']}',
                             products      = '{$retailerRNAField['products']}',
                             territory_id      = '{$retailerRNAField['territory_id']}',
                             zone_id      = '{$retailerRNAField['zone_id']}',

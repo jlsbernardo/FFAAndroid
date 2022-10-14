@@ -47,6 +47,7 @@ class Teams extends DB
 
         $portSettingsInsertQuery = "";
         $result = $this->exec_query($sql);
+        $country = $this->country['country_name'];
 
         $countTeamAffectedRows = 0;
         if (sqlsrv_num_rows($result) > 0) {
