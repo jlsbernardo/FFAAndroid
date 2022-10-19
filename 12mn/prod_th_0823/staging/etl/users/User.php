@@ -120,7 +120,7 @@ class User extends DB
                     // if (date('Y-m-d') == convert_to_datetime($userRNAFields['created_on'], 'Y-m-d')) {
                         if (!is_null($lastInserted)) {
 
-                            if ($lastInserted > $userRNAFields['ffa_id']) {
+                            // if ($lastInserted > $userRNAFields['ffa_id']) {
                                 $strColumns = implode(', ', array_keys($userRNAFields));
                                 $strValues =  " '" . implode("', '", array_values($userRNAFields)) . "' ";
                                 $userInsertQuery = "INSERT INTO [$this->schemaName].[$this->stagingTable] ({$strColumns}) VALUES ({$strValues});";
@@ -129,7 +129,7 @@ class User extends DB
                                 if ($result) {
                                     $count += 1;
                                 }
-                            }
+                            // }
                         } else {
                             $strColumns = implode(', ', array_keys($userRNAFields));
                             $strValues =  " '" . implode("', '", array_values($userRNAFields)) . "' ";
