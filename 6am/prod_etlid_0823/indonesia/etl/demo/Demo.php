@@ -3,6 +3,12 @@
 
 require_once (dirname(__FILE__, 3). '/src/RNA/Database/DB.php');
 
+/**
+ * This script is for boilerplate of reports scripts per country (ie. demo_reports_ph.php, demo_reports_vn.php etc.)
+ * 
+ * @return \Logs
+ */
+
 class Demo extends DB
 {
     protected $ffaTable = 'tbl_ffa_demo';
@@ -36,28 +42,32 @@ class Demo extends DB
 
     private function getLastInsertedId()
     {
+        echo Logs::success("1AM ID Demo getLastInsertedId Process Start: " . date('Y-m-d H:i:s') . "\n");
         $sql = "SELECT ffa_id FROM staging_ph WHERE report_table = 'demo_reports' ORDER BY id desc limit 1";
         $result = $this->exec_query($sql);
 
         if ($result->num_rows > 0) {
             return $result;
         }
+        echo Logs::success("1AM ID Demo getLastInsertedId Process End: " . date('Y-m-d H:i:s') . "\n");
     }
 
     private function getExistingInStaging($ffa_id)
     {
+        echo Logs::success("1AM ID Demo getExistingInStaging Process Start: " . date('Y-m-d H:i:s') . "\n");
         $sql = "SELECT ffa_id FROM staging_ph WHERE report_table = 'demo_reports' AND 'ffa_id' = $ffa_id limit 1";
         $result = $this->exec_query($sql);
 
         if ($result->num_rows > 0) {
             return $result->fetch_assoc();
         }
-
+        echo Logs::success("1AM ID Demo getExistingInStaging Process End: " . date('Y-m-d H:i:s') . "\n");
         return false;
     }
 
     private function __checkDeleted($ffa_id)
     {
+        echo Logs::success("1AM ID Demo __checkDeleted Process Start: " . date('Y-m-d H:i:s') . "\n");
         $sql = "SELECT ffa_id FROM tbl_deleted_activities WHERE module = '$this->reportTable' AND 'ffa_id' = $ffa_id limit 1";
         $result = $this->exec_query($sql);
 
@@ -68,7 +78,7 @@ class Demo extends DB
                 return true;
             }
         }
-
+        echo Logs::success("1AM ID Demo __checkDeleted Process End: " . date('Y-m-d H:i:s') . "\n");
         return false;
     }
     
@@ -81,6 +91,7 @@ class Demo extends DB
      */
     public function updateRNAEtlSync($lastInserted, $count) 
     {
+        echo Logs::success("1AM ID Demo updateRNAEtlSync Process Start: " . date('Y-m-d H:i:s') . "\n");
         $currentDateTime = date('Y-m-d H:i:s');
         $checkRecords = $this->__checkRecordFFASync($lastInserted);
         $action = !$checkRecords ? 'create' : 'update';
@@ -94,11 +105,13 @@ class Demo extends DB
             VALUES ('update', '$this->reportTable', '$currentDateTime' , 'active', '$count', '$lastInserted');";
             $this->insert_query($insert);
         }
+        echo Logs::success("1AM ID Demo updateRNAEtlSync Process End: " . date('Y-m-d H:i:s') . "\n");
     }
 
     // Check the user record on ffa.tbl_rna_etl_sync table
     public function __checkRecordFFASync($lastInserted)
     {
+        echo Logs::success("1AM ID Demo __checkRecordFFASync Process Start: " . date('Y-m-d H:i:s') . "\n");
         $where = (!is_null($lastInserted) && $lastInserted != '') ? 'AND last_insert_id = ' . $lastInserted : '';
         $sql = "SELECT id, last_insert_id, last_synced_date FROM $this->ffaSyncTable WHERE module = '$this->reportTable' $where ORDER BY id DESC LIMIT 1";
         
@@ -107,7 +120,7 @@ class Demo extends DB
             $row = $results->fetch_assoc();
             return $row;
         }
-        
+        echo Logs::success("1AM ID Demo __checkRecordFFASync Process End: " . date('Y-m-d H:i:s') . "\n");
         return false;
     }
 
@@ -117,7 +130,8 @@ class Demo extends DB
      * @return array | string
      */
     public function getStaging()
-    {
+    {   
+        echo Logs::success("1AM ID Demo getStaging Process Start: " . date('Y-m-d H:i:s') . "\n");
         $demoSql = "SELECT
         DISTINCT 
         id,
@@ -436,10 +450,12 @@ class Demo extends DB
             $message = "No Demo Reports Records to sync";
             return $message;
         }
+        echo Logs::success("1AM ID Demo getStaging Process End: " . date('Y-m-d H:i:s') . "\n");
     }
 
     private function __checkDemoRecord($ffa_id)
     {
+        echo Logs::success("1AM ID Demo __checkDemoRecord Process Start: " . date('Y-m-d H:i:s') . "\n");
         $country = $this->country['country_name'];
         $sql = "SELECT TOP 1 [id]
         FROM 
@@ -451,12 +467,13 @@ class Demo extends DB
         if (sqlsrv_num_rows($results) > 0) {
             return sqlsrv_fetch_array($results);
         }
-
+        echo Logs::success("1AM ID Demo __checkDemoRecord Process End: " . date('Y-m-d H:i:s') . "\n");
         return false;
     }
 
     private function getPortalSettingsKey($key)
     {
+        echo Logs::success("1AM ID Demo getPortalSettingsKey Process Start: " . date('Y-m-d H:i:s') . "\n");
         $sql = "SELECT TOP 1
             [id],
             [key],
@@ -471,10 +488,12 @@ class Demo extends DB
             $row = sqlsrv_fetch_array($results);
             return $row;
         }
+        echo Logs::success("1AM ID Demo getPortalSettingsKey Process End: " . date('Y-m-d H:i:s') . "\n");
     }
                   
     private function getOffBusinessHours()
     {
+        echo Logs::success("1AM ID Demo getOffBusinessHours Process Start: " . date('Y-m-d H:i:s') . "\n");
         $workingHoursSQL = "SELECT
            [id],
            [module]
@@ -496,6 +515,7 @@ class Demo extends DB
                 return $res;
             }
         }
+        echo Logs::success("1AM ID Demo getOffBusinessHours Process End: " . date('Y-m-d H:i:s') . "\n");
     }
 
 }

@@ -2,6 +2,13 @@
 
 require_once(dirname(__FILE__, 3) . '/src/RNA/Database/DB.php');
 
+/**
+ * This script is for boilerplate of reports scripts per country (ie. demo_reports_ph.php, demo_reports_vn.php etc.)
+ * 
+ * @return \Logs
+ */
+
+
 class Retailer extends DB
 {
 
@@ -34,6 +41,7 @@ class Retailer extends DB
 
     private function __checkDeleted($ffa_id)
     {
+        echo Logs::success("1AM ID Retailer __checkDeleted Process Start: " . date('Y-m-d H:i:s') . "\n");
         $sql = "SELECT ffa_id FROM tbl_deleted_activities WHERE module = '$this->reportTable' AND 'ffa_id' = $ffa_id limit 1";
         $result = $this->exec_query($sql);
 
@@ -44,7 +52,7 @@ class Retailer extends DB
                 return true;
             }
         }
-
+        echo Logs::success("1AM ID Retailer __checkDeleted Process End: " . date('Y-m-d H:i:s') . "\n");
         return false;
     }
 
@@ -55,6 +63,7 @@ class Retailer extends DB
      */
     public function getStaging()
     {
+        echo Logs::success("1AM ID Retailer getStaging Process Start: " . date('Y-m-d H:i:s') . "\n");
         $retailerSql = "SELECT
         id,
         ffa_id,
@@ -334,6 +343,7 @@ class Retailer extends DB
             $message = "No Retailer Reports Records to sync";
             return $message;
         }
+        echo Logs::success("1AM ID Retailer getStaging Process End: " . date('Y-m-d H:i:s') . "\n");
     }
     
     /**
@@ -345,6 +355,7 @@ class Retailer extends DB
      */
     public function updateRNAEtlSync($lastInserted, $count) 
     {
+        echo Logs::success("1AM ID Retailer updateRNAEtlSync Process Start: " . date('Y-m-d H:i:s') . "\n");
         $currentDateTime = date('Y-m-d H:i:s');
         $checkRecords = $this->__checkRecordFFASync($lastInserted);
         $action = !$checkRecords ? 'create' : 'update';
@@ -358,11 +369,13 @@ class Retailer extends DB
             VALUES ('update', '$this->reportTable', '$currentDateTime' , 'active', '$count', '$lastInserted');";
             $this->insert_query($insert);
         }
+        echo Logs::success("1AM ID Retailer updateRNAEtlSync Process End: " . date('Y-m-d H:i:s') . "\n");
     }
 
     // Check the user record on ffa.tbl_rna_etl_sync table
     public function __checkRecordFFASync($lastInserted)
     {
+        echo Logs::success("1AM ID Retailer __checkRecordFFASync Process Start: " . date('Y-m-d H:i:s') . "\n");
         $where = (!is_null($lastInserted) && $lastInserted != '') ? 'AND last_insert_id = ' . $lastInserted : '';
         $sql = "SELECT id FROM $this->ffaSyncTable WHERE module = '$this->reportTable' $where ORDER BY id DESC  LIMIT 1 ";
         
@@ -371,7 +384,7 @@ class Retailer extends DB
             $row = $results->fetch_assoc();
             return $row;
         }
-        
+        echo Logs::success("1AM ID Retailer __checkRecordFFASync Process End: " . date('Y-m-d H:i:s') . "\n");
         return false;
     }
 
@@ -383,6 +396,7 @@ class Retailer extends DB
      */
     private function __checkRetailerRecord($ffa_id)
     {
+        echo Logs::success("1AM ID Retailer __checkRetailerRecord Process Start: " . date('Y-m-d H:i:s') . "\n");
         $country = $this->country['country_name'];
         $sql = "SELECT TOP 1 id
         FROM 
@@ -394,13 +408,14 @@ class Retailer extends DB
         if (sqlsrv_num_rows($results) > 0) {
             return sqlsrv_fetch_array($results);
         }
-
+        echo Logs::success("1AM ID Retailer __checkRetailerRecord Process End: " . date('Y-m-d H:i:s') . "\n");
         return false;
     }
 
 
     private function getPortalSettingsKey($key)
     {
+        echo Logs::success("1AM ID Retailer getPortalSettingsKey Process Start: " . date('Y-m-d H:i:s') . "\n");
         $sql = "SELECT TOP 1
             [id],
             [key],
@@ -415,11 +430,12 @@ class Retailer extends DB
             $row = sqlsrv_fetch_array($results);
             return $row;
         }
-
+        echo Logs::success("1AM ID Retailer getPortalSettingsKey Process End: " . date('Y-m-d H:i:s') . "\n");
     }
 
     private function getOffBusinessHours()
     {
+        echo Logs::success("1AM ID Retailer getOffBusinessHours Process Start: " . date('Y-m-d H:i:s') . "\n");
         $workingHoursSQL = "SELECT
            [id],
            [module]
@@ -441,10 +457,12 @@ class Retailer extends DB
                 return $res;
             }
         }
+        echo Logs::success("1AM ID Retailer getOffBusinessHours Process End: " . date('Y-m-d H:i:s') . "\n");
     }
 
     private function getRetailerZoneRegion($territory)
     {
+        echo Logs::success("1AM ID Retailer getRetailerZoneRegion Process Start: " . date('Y-m-d H:i:s') . "\n");
         $zoneSQL = "SELECT
             id,
             level
@@ -464,10 +482,12 @@ class Retailer extends DB
                 'region'    => $regionId
             ];
         }
+        echo Logs::success("1AM ID Retailer getRetailerZoneRegion Process End: " . date('Y-m-d H:i:s') . "\n");
     }
 
     private function getRetailerRegion($zoneId)
     {   
+        echo Logs::success("1AM ID Retailer getRetailerRegion Process Start: " . date('Y-m-d H:i:s') . "\n");
         $regionSQL = "SELECT
             id,
             level
@@ -481,6 +501,6 @@ class Retailer extends DB
             $regionId = $row['level'];
             return $regionId;
         }
-
+        echo Logs::success("1AM ID Retailer getRetailerRegion Process End: " . date('Y-m-d H:i:s') . "\n");
     }
 }
