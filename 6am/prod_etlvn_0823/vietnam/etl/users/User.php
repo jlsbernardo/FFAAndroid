@@ -117,7 +117,7 @@ class User extends DB
                             zone      = '{$data['zone']}',
                             isactive  = '{$data['isactive']}',
                             region    = '{$data['region']}' 
-                        WHERE [ffa_id] = '$ffa_id'
+                        WHERE [ffa_id] = '{$data['ffa_id']}'
                         AND country = '$country';";
                         $result = $this->exec_query($userUpdateQuery);
 

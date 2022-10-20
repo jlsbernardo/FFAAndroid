@@ -103,7 +103,7 @@ class User extends DB
                         || $check_record['email'] != $data['email'] || $check_record['company'] != $data['company']
                         || $check_record['team'] != $data['team'] || $check_record['territory'] != $data['territory'] 
                         || $check_record['zone'] != $data['zone'] || $check_record['region'] != $data['region']
-                    ) { 
+                    ) {
                         $country = $this->country['country_name'];
                         $userUpdateQuery = "
                         UPDATE [$this->schemaName].[$this->analyticalTable]
@@ -117,7 +117,7 @@ class User extends DB
                             zone      = '{$data['zone']}',
                             isactive  = '{$data['isactive']}',
                             region    = '{$data['region']}' 
-                        WHERE [ffa_id] = '$ffa_id'
+                        WHERE [ffa_id] = '{$data['ffa_id']}'
                         AND country = '$country';";
                         $result = $this->exec_query($userUpdateQuery);
 
