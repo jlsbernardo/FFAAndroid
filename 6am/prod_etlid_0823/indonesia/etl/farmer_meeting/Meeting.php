@@ -2,6 +2,13 @@
 
 require_once(dirname(__FILE__, 3) . '/src/RNA/Database/DB.php');
 
+/**
+ * This script is for boilerplate of reports scripts per country (ie. demo_reports_ph.php, demo_reports_vn.php etc.)
+ * 
+ * @return \Logs
+ */
+
+
 class Meeting extends DB
 {
 
@@ -41,6 +48,7 @@ class Meeting extends DB
      */
     private function __checkDeleted($ffa_id)
     {
+        echo Logs::success("1AM ID Meeting __checkDeleted Process Start: " . date('Y-m-d H:i:s') . "\n");
         $sql = "SELECT ffa_id FROM tbl_deleted_activities WHERE module = '$this->reportTable' AND 'ffa_id' = $ffa_id limit 1";
         $result = $this->exec_query($sql);
 
@@ -51,7 +59,7 @@ class Meeting extends DB
                 return true;
             }
         }
-
+        echo Logs::success("1AM ID Meeting __checkDeleted Process End: " . date('Y-m-d H:i:s') . "\n");
         return false;
     }
 
@@ -62,6 +70,7 @@ class Meeting extends DB
      */
     public function getStaging()
     {
+        echo Logs::success("1AM ID Meeting getStaging Process Start: " . date('Y-m-d H:i:s') . "\n");
         $meetingSql = "SELECT
         id,
         ffa_id,
@@ -328,7 +337,7 @@ class Meeting extends DB
                     }
                 }
             }
-
+            echo Logs::success("1AM ID Meeting getStaging Process End: " . date('Y-m-d H:i:s') . "\n");
             return [
                 'num_rows'    => $countMeetingAffectedRows,
                 'last_insert_id'  => $lastInserted
@@ -336,8 +345,10 @@ class Meeting extends DB
 
         } else {
             $message = "No meeting Reports Records to sync";
+            echo Logs::success("1AM ID Meeting getStaging Process End: " . date('Y-m-d H:i:s') . "\n");
             return $message;
         }
+        
     }
 
     /**
@@ -349,6 +360,7 @@ class Meeting extends DB
      */
     public function updateRNAEtlSync($lastInserted, $count) 
     {
+        echo Logs::success("1AM ID Meeting updateRNAEtlSync Process Start: " . date('Y-m-d H:i:s') . "\n");
         $currentDateTime = date('Y-m-d H:i:s');
         $checkRecords = $this->__checkRecordFFASync($lastInserted);
         $action = !$checkRecords ? 'create' : 'update';
@@ -362,11 +374,13 @@ class Meeting extends DB
             VALUES ('update', '$this->reportTable', '$currentDateTime' , 'active', '$count', '$lastInserted');";
             $this->insert_query($insert);
         }
+        echo Logs::success("1AM ID Meeting updateRNAEtlSync Process End: " . date('Y-m-d H:i:s') . "\n");
     }
 
     // Check the user record on ffa.tbl_rna_etl_sync table
     public function __checkRecordFFASync($lastInserted)
     {
+        echo Logs::success("1AM ID Meeting __checkRecordFFASync Process Start: " . date('Y-m-d H:i:s') . "\n");
         $where = (!is_null($lastInserted) && $lastInserted != '') ? 'AND last_insert_id = ' . $lastInserted : '';
         $sql = "SELECT id, last_insert_id, last_synced_date FROM $this->ffaSyncTable WHERE module = '$this->reportTable' $where ORDER BY id DESC LIMIT 1";
         
@@ -375,12 +389,13 @@ class Meeting extends DB
             $row = $results->fetch_assoc();
             return $row;
         }
-        
+        echo Logs::success("1AM ID Meeting __checkRecordFFASync Process End: " . date('Y-m-d H:i:s') . "\n");
         return false;
     }
 
     private function __checkMeetingRecord($ffa_id)
     {
+        
         $country = $this->country['country_name'];
         $sql = "SELECT TOP 1 [id]
         FROM 
@@ -392,12 +407,13 @@ class Meeting extends DB
         if (sqlsrv_num_rows($results) > 0) {
             return sqlsrv_fetch_array($results);
         }
-
+        
         return false;
     }
 
     private function getPortalSettingsKey($key)
     {
+        
         $sql = "SELECT TOP 1
             [id],
             [key],
@@ -412,10 +428,12 @@ class Meeting extends DB
             $row = sqlsrv_fetch_array($results);
             return $row;
         }
+        
     }
 
     private function getOffBusinessHours()
     {
+        
         $workingHoursSQL = "SELECT
            [id],
            [module]

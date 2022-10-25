@@ -3,6 +3,13 @@
 
 require_once (dirname(__FILE__, 3). '/src/RNA/Database/DB.php');
 
+/**
+ * This script is for generating .sql and .txt file for staging (for all countries)
+ * That will be imported to Analytical Database using any database tools ie. MySQL Workbench
+ * 
+ * @return \Logs
+ */
+
 class Demo extends DB
 {
     protected $ffaTable = 'tbl_ffa_demo';
@@ -36,6 +43,7 @@ class Demo extends DB
 
     private function __checkDeleted($ffa_id)
     {
+        
         $sql = "SELECT ffa_id FROM tbl_deleted_activities WHERE module = '$this->reportTable' AND 'ffa_id' = $ffa_id limit 1";
         $result = $this->exec_query($sql);
 
@@ -46,7 +54,7 @@ class Demo extends DB
                 return true;
             }
         }
-
+        
         return false;
     }
 
@@ -57,6 +65,8 @@ class Demo extends DB
      */
     public function getDataFromFFA()
     {
+        echo Logs::success("12MN ID Demo getDataFromFFA Process Starts: " . date('Y-m-d H:i:s') . "\n");
+
         $checkLastRecord = $this->__checkLastRecordFFASync();
         $lastInserted = ($checkLastRecord) ? $checkLastRecord['last_insert_id'] : null;
         $only2022_data = strtotime('2022-04-01 00:00:00');
@@ -211,7 +221,7 @@ class Demo extends DB
                 $data[] = $demoRNAFields;
                 $countDemoAffectedRows++;
             }
-
+            echo Logs::success("12MN ID Demo getDataFromFFA Process End: " . date('Y-m-d H:i:s') . "\n");
             return [
                 'data'  => $data,
                 'count' => $countDemoAffectedRows,
@@ -219,12 +229,13 @@ class Demo extends DB
             ];
 
         } else {
-            
+            echo Logs::success("12MN ID Demo getDataFromFFA Process End: " . date('Y-m-d H:i:s') . "\n");
             $message = "No Demo Records to sync";
             return [
                 'data'  => $message,
             ];
         }
+
     }
 
     /**
@@ -235,6 +246,8 @@ class Demo extends DB
      */
     public function insertIntoStaging($data, $lastInserted = null)
     {
+        echo Logs::success("12MN ID Demo insertIntoStaging Process Start: " . date('Y-m-d H:i:s') . "\n");
+
         $count = 0;
         $objVN = new vn_charset_conversion();
         $country = $this->country['country_name'];
@@ -314,6 +327,8 @@ class Demo extends DB
             }
         }
 
+        echo Logs::success("12MN ID Demo insertIntoStaging Process End: " . date('Y-m-d H:i:s') . "\n");
+
         return [
             'count' => $count
         ];
@@ -321,6 +336,7 @@ class Demo extends DB
 
     private function __checkLastRecordFFASync()
     {
+        
         $sql = "SELECT id, last_insert_id, last_synced_date FROM $this->ffaSyncTable WHERE module = '$this->reportTable' AND action_name = 'create' ORDER BY id desc LIMIT 1";
         $results = $this->exec_query($sql);
         
@@ -340,6 +356,7 @@ class Demo extends DB
      */
     private function __checkRecordStaging($data)
     {
+
         $ffaId = $data['ffa_id'];
         $sql = "SELECT TOP 1 ffa_id, report_table FROM [$this->schemaName].[$this->stagingTable] WHERE report_table = '$this->reportTable' AND ffa_id = '$ffaId' ORDER BY id desc";
         $res = $this->exec_query($sql);
@@ -349,6 +366,7 @@ class Demo extends DB
 
     private function getDemoZoneRegion($territory)
     {
+
         $zoneSQL = "SELECT
             id,
             level
@@ -369,6 +387,7 @@ class Demo extends DB
             $regionId = $this->getDemoRegion($zoneId);
         }
 
+
         return [
             'zone'  => $zoneId,
             'region'    => $regionId
@@ -377,6 +396,7 @@ class Demo extends DB
 
     private function getDemoRegion($zoneId)
     {   
+
         $regionSQL = "SELECT
             id,
             level
@@ -391,10 +411,13 @@ class Demo extends DB
             $regionId = $row['level'];
         }
 
+
         return $regionId;
     }
     private function getSupervisor($ffa, $territory,$team)
     {   
+        echo Logs::success("12MN ID Demo getSupervisor Process Start: " . date('Y-m-d H:i:s') . "\n");
+
         $supSQL =  "SELECT id, uterritory FROM users
         WHERE  active=1 AND team='$team' AND company='ZM' AND (uterritory<>'N;' ) order by id asc";
         
@@ -410,6 +433,8 @@ class Demo extends DB
                     }
             }
         }
+
+        echo Logs::success("12MN ID Demo getSupervisor Process Start: " . date('Y-m-d H:i:s') . "\n");
 
         return $supId;
     }
