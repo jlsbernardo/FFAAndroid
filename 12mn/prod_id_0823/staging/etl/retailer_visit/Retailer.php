@@ -2,6 +2,13 @@
 
 require_once(dirname(__FILE__, 3) . '/src/RNA/Database/DB.php');
 
+/**
+ * This script is for generating .sql and .txt file for staging (for all countries)
+ * That will be imported to Analytical Database using any database tools ie. MySQL Workbench
+ * 
+ * @return \Logs
+ */
+
 class Retailer extends DB
 {
 
@@ -34,6 +41,7 @@ class Retailer extends DB
 
     private function __checkDeleted($ffa_id)
     {
+        echo Logs::success("12MN ID RETAILER __checkDeleted Process Starts: " . date('Y-m-d H:i:s') . "\n");
         $sql = "SELECT ffa_id FROM tbl_deleted_activities WHERE module = '$this->reportTable' AND 'ffa_id' = $ffa_id limit 1";
         $result = $this->exec_query($sql);
 
@@ -44,7 +52,7 @@ class Retailer extends DB
                 return true;
             }
         }
-
+        echo Logs::success("12MN ID RETAILER __checkDeleted Process End: " . date('Y-m-d H:i:s') . "\n");
         return false;
     }
 
@@ -55,6 +63,7 @@ class Retailer extends DB
      */
     public function getDataFromFFA()
     {
+        echo Logs::success("12MN ID RETAILER getDataFromFFA Process Starts: " . date('Y-m-d H:i:s') . "\n");
         $checkLastRecord = $this->__checkLastRecordFFASync();
         $lastInserted = ($checkLastRecord) ? $checkLastRecord['last_insert_id'] : null;
         $only2022_data = strtotime('2022-04-01 00:00:00');
@@ -205,6 +214,7 @@ class Retailer extends DB
                 'data' => $message
             ];
         }
+        echo Logs::success("12MN ID RETAILER getDataFromFFA Process End: " . date('Y-m-d H:i:s') . "\n");
     }
 
     /**
@@ -215,6 +225,7 @@ class Retailer extends DB
      */
     public function insertIntoStaging($data, $lastInserted = null)
     {
+        echo Logs::success("12MN ID RETAILER insertIntoStaging Process Starts: " . date('Y-m-d H:i:s') . "\n");
         $count = 0;
         $objVN = new vn_charset_conversion();
         $country = $this->country['country_name'];
@@ -250,7 +261,7 @@ class Retailer extends DB
                         $team = (strtolower($country)=='vietnam') ? $objVN->convert( $retailerRNAFields['team']   ) : $retailerRNAFields['team'];
                         $team = (strtolower($country)=='thailand') ? $team : trim($team);
 
-                        $demoUpdateQuery = "
+                        $RETAILERUpdateQuery = "
                         UPDATE [$this->schemaName].[$this->stagingTable]
                         SET 
                             update_on= '{$retailerRNAFields['update_on']}',
@@ -281,7 +292,7 @@ class Retailer extends DB
                             lng      = '{$retailerRNAFields['lng']}'
                         WHERE ffa_id = '$ffaId' AND report_table = '$this->reportTable';";
 
-                        $result =  $this->exec_query($demoUpdateQuery);
+                        $result =  $this->exec_query($RETAILERUpdateQuery);
                         if ($result) {
                             $count += sqlsrv_rows_affected($result);
                         }
@@ -289,7 +300,7 @@ class Retailer extends DB
                 // }
             }
         }
-
+        echo Logs::success("12MN ID RETAILER insertIntoStaging Process End: " . date('Y-m-d H:i:s') . "\n");
         return [
             'count' => $count
         ];
@@ -297,6 +308,7 @@ class Retailer extends DB
 
     private function __checkLastRecordFFASync()
     {
+        echo Logs::success("12MN ID RETAILER __checkLastRecordFFASync Process Starts: " . date('Y-m-d H:i:s') . "\n");
         $sql = "SELECT id, last_insert_id, last_synced_date FROM $this->ffaSyncTable WHERE module = '$this->reportTable' AND action_name = 'create' ORDER BY id desc LIMIT 1";
         $results = $this->exec_query($sql);
         
@@ -304,7 +316,7 @@ class Retailer extends DB
             $row = $results->fetch_assoc();
             return $row;
         }
-        
+        echo Logs::success("12MN ID RETAILER __checkLastRecordFFASync Process End: " . date('Y-m-d H:i:s') . "\n");
         return false;
     }
 
@@ -316,15 +328,17 @@ class Retailer extends DB
      */
     private function __checkRecordStaging($data)
     {
+        echo Logs::success("12MN ID RETAILER __checkRecordStaging Process Starts: " . date('Y-m-d H:i:s') . "\n");
         $ffaId = $data['ffa_id'];
         $sql = "SELECT TOP 1 ffa_id, report_table FROM [$this->schemaName].[$this->stagingTable] WHERE report_table = '$this->reportTable' AND ffa_id = '$ffaId' ORDER BY id desc";
         $res = $this->exec_query($sql);
-
+        echo Logs::success("12MN ID RETAILER __checkRecordStaging Process End: " . date('Y-m-d H:i:s') . "\n");
         return $res;
     }
 
     private function getRetailerZoneRegion($territory)
     {
+        echo Logs::success("12MN ID RETAILER getRetailerZoneRegion Process Starts: " . date('Y-m-d H:i:s') . "\n");
         $zoneSQL = "SELECT
             id,
             level
@@ -344,10 +358,12 @@ class Retailer extends DB
                 'region'    => $regionId
             ];
         }
+        echo Logs::success("12MN ID RETAILER getRetailerZoneRegion Process End: " . date('Y-m-d H:i:s') . "\n");
     }
 
     private function getRetailerRegion($zoneId)
     {   
+        echo Logs::success("12MN ID RETAILER getRetailerRegion Process Starts: " . date('Y-m-d H:i:s') . "\n");
         $regionSQL = "SELECT
             id,
             level
@@ -361,10 +377,11 @@ class Retailer extends DB
             $regionId = $row['level'];
             return $regionId;
         }
-
+        echo Logs::success("12MN ID RETAILER getRetailerRegion Process End: " . date('Y-m-d H:i:s') . "\n");
     }
     private function getSupervisor($ffa, $territory,$team)
     {   
+        echo Logs::success("12MN ID RETAILER getSupervisor Process Starts: " . date('Y-m-d H:i:s') . "\n");
         $supSQL =  "SELECT id, uterritory FROM users
         WHERE  active=1 AND team='$team' AND company='ZM' AND (uterritory<>'N;' ) order by id asc";
         
@@ -380,7 +397,7 @@ class Retailer extends DB
                     }
             }
         }
-
+        echo Logs::success("12MN ID RETAILER getSupervisor Process End: " . date('Y-m-d H:i:s') . "\n");
         return $supId;
     }
 }
