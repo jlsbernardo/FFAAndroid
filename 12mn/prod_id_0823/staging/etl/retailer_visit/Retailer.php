@@ -41,7 +41,7 @@ class Retailer extends DB
 
     private function __checkDeleted($ffa_id)
     {
-        echo Logs::success("12MN ID RETAILER __checkDeleted Process Starts: " . date('Y-m-d H:i:s') . "\n");
+
         $sql = "SELECT ffa_id FROM tbl_deleted_activities WHERE module = '$this->reportTable' AND 'ffa_id' = $ffa_id limit 1";
         $result = $this->exec_query($sql);
 
@@ -52,7 +52,7 @@ class Retailer extends DB
                 return true;
             }
         }
-        echo Logs::success("12MN ID RETAILER __checkDeleted Process End: " . date('Y-m-d H:i:s') . "\n");
+        
         return false;
     }
 
@@ -202,19 +202,20 @@ class Retailer extends DB
 
                 $data[] = $retailerRNAFields;
             }
-
+            echo Logs::success("12MN ID RETAILER getDataFromFFA Process End: " . date('Y-m-d H:i:s') . "\n");
             return [
                 'data' => $data,
                 'last_inserted' => $lastInserted
             ];
 
         } else {
+            echo Logs::success("12MN ID RETAILER getDataFromFFA Process End: " . date('Y-m-d H:i:s') . "\n");
             $message = "No Retailer Visit Records to sync";
             return [
                 'data' => $message
             ];
         }
-        echo Logs::success("12MN ID RETAILER getDataFromFFA Process End: " . date('Y-m-d H:i:s') . "\n");
+        
     }
 
     /**
@@ -308,7 +309,7 @@ class Retailer extends DB
 
     private function __checkLastRecordFFASync()
     {
-        echo Logs::success("12MN ID RETAILER __checkLastRecordFFASync Process Starts: " . date('Y-m-d H:i:s') . "\n");
+        
         $sql = "SELECT id, last_insert_id, last_synced_date FROM $this->ffaSyncTable WHERE module = '$this->reportTable' AND action_name = 'create' ORDER BY id desc LIMIT 1";
         $results = $this->exec_query($sql);
         
@@ -316,7 +317,7 @@ class Retailer extends DB
             $row = $results->fetch_assoc();
             return $row;
         }
-        echo Logs::success("12MN ID RETAILER __checkLastRecordFFASync Process End: " . date('Y-m-d H:i:s') . "\n");
+
         return false;
     }
 
@@ -328,17 +329,15 @@ class Retailer extends DB
      */
     private function __checkRecordStaging($data)
     {
-        echo Logs::success("12MN ID RETAILER __checkRecordStaging Process Starts: " . date('Y-m-d H:i:s') . "\n");
         $ffaId = $data['ffa_id'];
         $sql = "SELECT TOP 1 ffa_id, report_table FROM [$this->schemaName].[$this->stagingTable] WHERE report_table = '$this->reportTable' AND ffa_id = '$ffaId' ORDER BY id desc";
         $res = $this->exec_query($sql);
-        echo Logs::success("12MN ID RETAILER __checkRecordStaging Process End: " . date('Y-m-d H:i:s') . "\n");
         return $res;
     }
 
     private function getRetailerZoneRegion($territory)
     {
-        echo Logs::success("12MN ID RETAILER getRetailerZoneRegion Process Starts: " . date('Y-m-d H:i:s') . "\n");
+        
         $zoneSQL = "SELECT
             id,
             level
@@ -358,12 +357,12 @@ class Retailer extends DB
                 'region'    => $regionId
             ];
         }
-        echo Logs::success("12MN ID RETAILER getRetailerZoneRegion Process End: " . date('Y-m-d H:i:s') . "\n");
+        
     }
 
     private function getRetailerRegion($zoneId)
     {   
-        echo Logs::success("12MN ID RETAILER getRetailerRegion Process Starts: " . date('Y-m-d H:i:s') . "\n");
+        
         $regionSQL = "SELECT
             id,
             level
@@ -377,7 +376,7 @@ class Retailer extends DB
             $regionId = $row['level'];
             return $regionId;
         }
-        echo Logs::success("12MN ID RETAILER getRetailerRegion Process End: " . date('Y-m-d H:i:s') . "\n");
+        
     }
     private function getSupervisor($ffa, $territory,$team)
     {   

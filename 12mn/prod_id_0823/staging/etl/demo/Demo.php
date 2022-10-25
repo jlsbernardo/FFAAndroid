@@ -43,7 +43,7 @@ class Demo extends DB
 
     private function __checkDeleted($ffa_id)
     {
-        echo Logs::success("12MN ID Demo __checkDeleted Process Starts: " . date('Y-m-d H:i:s') . "\n");
+        
         $sql = "SELECT ffa_id FROM tbl_deleted_activities WHERE module = '$this->reportTable' AND 'ffa_id' = $ffa_id limit 1";
         $result = $this->exec_query($sql);
 
@@ -54,7 +54,7 @@ class Demo extends DB
                 return true;
             }
         }
-        echo Logs::success("12MN ID Demo __checkDeleted Process End: " . date('Y-m-d H:i:s') . "\n");
+        
         return false;
     }
 
@@ -221,7 +221,7 @@ class Demo extends DB
                 $data[] = $demoRNAFields;
                 $countDemoAffectedRows++;
             }
-
+            echo Logs::success("12MN ID Demo getDataFromFFA Process End: " . date('Y-m-d H:i:s') . "\n");
             return [
                 'data'  => $data,
                 'count' => $countDemoAffectedRows,
@@ -229,14 +229,13 @@ class Demo extends DB
             ];
 
         } else {
-            
+            echo Logs::success("12MN ID Demo getDataFromFFA Process End: " . date('Y-m-d H:i:s') . "\n");
             $message = "No Demo Records to sync";
             return [
                 'data'  => $message,
             ];
         }
 
-        echo Logs::success("12MN ID Demo getDataFromFFA Process End: " . date('Y-m-d H:i:s') . "\n");
     }
 
     /**
@@ -337,7 +336,7 @@ class Demo extends DB
 
     private function __checkLastRecordFFASync()
     {
-        echo Logs::success("12MN ID Demo __checkLastRecordFFASync Process Start: " . date('Y-m-d H:i:s') . "\n");
+        
         $sql = "SELECT id, last_insert_id, last_synced_date FROM $this->ffaSyncTable WHERE module = '$this->reportTable' AND action_name = 'create' ORDER BY id desc LIMIT 1";
         $results = $this->exec_query($sql);
         
@@ -345,7 +344,7 @@ class Demo extends DB
             $row = $results->fetch_assoc();
             return $row;
         }
-        echo Logs::success("12MN ID Demo __checkLastRecordFFASync Process End: " . date('Y-m-d H:i:s') . "\n");
+        
         return false;
     }
 
@@ -357,19 +356,16 @@ class Demo extends DB
      */
     private function __checkRecordStaging($data)
     {
-        echo Logs::success("12MN ID Demo __checkRecordStaging Process Start: " . date('Y-m-d H:i:s') . "\n");
 
         $ffaId = $data['ffa_id'];
         $sql = "SELECT TOP 1 ffa_id, report_table FROM [$this->schemaName].[$this->stagingTable] WHERE report_table = '$this->reportTable' AND ffa_id = '$ffaId' ORDER BY id desc";
         $res = $this->exec_query($sql);
 
-        echo Logs::success("12MN ID Demo __checkRecordStaging Process End: " . date('Y-m-d H:i:s') . "\n");
         return $res;
     }
 
     private function getDemoZoneRegion($territory)
     {
-        echo Logs::success("12MN ID Demo getDemoZoneRegion Process Start: " . date('Y-m-d H:i:s') . "\n");
 
         $zoneSQL = "SELECT
             id,
@@ -391,7 +387,6 @@ class Demo extends DB
             $regionId = $this->getDemoRegion($zoneId);
         }
 
-        echo Logs::success("12MN ID Demo getDemoZoneRegion Process End: " . date('Y-m-d H:i:s') . "\n");
 
         return [
             'zone'  => $zoneId,
@@ -401,7 +396,6 @@ class Demo extends DB
 
     private function getDemoRegion($zoneId)
     {   
-        echo Logs::success("12MN ID Demo getDemoRegion Process Start: " . date('Y-m-d H:i:s') . "\n");
 
         $regionSQL = "SELECT
             id,
@@ -417,7 +411,6 @@ class Demo extends DB
             $regionId = $row['level'];
         }
 
-        echo Logs::success("12MN ID Demo getDemoRegion Process End: " . date('Y-m-d H:i:s') . "\n");
 
         return $regionId;
     }

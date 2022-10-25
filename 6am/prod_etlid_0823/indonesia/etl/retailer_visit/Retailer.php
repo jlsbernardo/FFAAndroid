@@ -333,7 +333,7 @@ class Retailer extends DB
                     }
                 }
             }
-            
+            echo Logs::success("1AM ID Retailer getStaging Process End: " . date('Y-m-d H:i:s') . "\n");
             return [
                 'num_rows'    => $countRetailerAffectedRows,
                 'last_insert_id'  => $lastInserted
@@ -341,9 +341,9 @@ class Retailer extends DB
 
         } else {
             $message = "No Retailer Reports Records to sync";
+            echo Logs::success("1AM ID Retailer getStaging Process End: " . date('Y-m-d H:i:s') . "\n");
             return $message;
         }
-        echo Logs::success("1AM ID Retailer getStaging Process End: " . date('Y-m-d H:i:s') . "\n");
     }
     
     /**
@@ -396,7 +396,7 @@ class Retailer extends DB
      */
     private function __checkRetailerRecord($ffa_id)
     {
-        echo Logs::success("1AM ID Retailer __checkRetailerRecord Process Start: " . date('Y-m-d H:i:s') . "\n");
+        
         $country = $this->country['country_name'];
         $sql = "SELECT TOP 1 id
         FROM 
@@ -408,14 +408,14 @@ class Retailer extends DB
         if (sqlsrv_num_rows($results) > 0) {
             return sqlsrv_fetch_array($results);
         }
-        echo Logs::success("1AM ID Retailer __checkRetailerRecord Process End: " . date('Y-m-d H:i:s') . "\n");
+        
         return false;
     }
 
 
     private function getPortalSettingsKey($key)
     {
-        echo Logs::success("1AM ID Retailer getPortalSettingsKey Process Start: " . date('Y-m-d H:i:s') . "\n");
+        
         $sql = "SELECT TOP 1
             [id],
             [key],
@@ -430,12 +430,12 @@ class Retailer extends DB
             $row = sqlsrv_fetch_array($results);
             return $row;
         }
-        echo Logs::success("1AM ID Retailer getPortalSettingsKey Process End: " . date('Y-m-d H:i:s') . "\n");
+        
     }
 
     private function getOffBusinessHours()
     {
-        echo Logs::success("1AM ID Retailer getOffBusinessHours Process Start: " . date('Y-m-d H:i:s') . "\n");
+        
         $workingHoursSQL = "SELECT
            [id],
            [module]
@@ -457,7 +457,7 @@ class Retailer extends DB
                 return $res;
             }
         }
-        echo Logs::success("1AM ID Retailer getOffBusinessHours Process End: " . date('Y-m-d H:i:s') . "\n");
+        
     }
 
     private function getRetailerZoneRegion($territory)

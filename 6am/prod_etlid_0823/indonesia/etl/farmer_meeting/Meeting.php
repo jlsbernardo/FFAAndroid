@@ -337,7 +337,7 @@ class Meeting extends DB
                     }
                 }
             }
-
+            echo Logs::success("1AM ID Meeting getStaging Process End: " . date('Y-m-d H:i:s') . "\n");
             return [
                 'num_rows'    => $countMeetingAffectedRows,
                 'last_insert_id'  => $lastInserted
@@ -345,9 +345,10 @@ class Meeting extends DB
 
         } else {
             $message = "No meeting Reports Records to sync";
+            echo Logs::success("1AM ID Meeting getStaging Process End: " . date('Y-m-d H:i:s') . "\n");
             return $message;
         }
-        echo Logs::success("1AM ID Meeting getStaging Process End: " . date('Y-m-d H:i:s') . "\n");
+        
     }
 
     /**
@@ -394,7 +395,7 @@ class Meeting extends DB
 
     private function __checkMeetingRecord($ffa_id)
     {
-        echo Logs::success("1AM ID Meeting __checkMeetingRecord Process Start: " . date('Y-m-d H:i:s') . "\n");
+        
         $country = $this->country['country_name'];
         $sql = "SELECT TOP 1 [id]
         FROM 
@@ -406,13 +407,13 @@ class Meeting extends DB
         if (sqlsrv_num_rows($results) > 0) {
             return sqlsrv_fetch_array($results);
         }
-        echo Logs::success("1AM ID Meeting __checkMeetingRecord Process End: " . date('Y-m-d H:i:s') . "\n");
+        
         return false;
     }
 
     private function getPortalSettingsKey($key)
     {
-        echo Logs::success("1AM ID Meeting getPortalSettingsKey Process Start: " . date('Y-m-d H:i:s') . "\n");
+        
         $sql = "SELECT TOP 1
             [id],
             [key],
@@ -427,12 +428,12 @@ class Meeting extends DB
             $row = sqlsrv_fetch_array($results);
             return $row;
         }
-        echo Logs::success("1AM ID Meeting getPortalSettingsKey Process End: " . date('Y-m-d H:i:s') . "\n");
+        
     }
 
     private function getOffBusinessHours()
     {
-        echo Logs::success("1AM ID Meeting getOffBusinessHours Process Start: " . date('Y-m-d H:i:s') . "\n");
+        
         $workingHoursSQL = "SELECT
            [id],
            [module]
@@ -454,7 +455,7 @@ class Meeting extends DB
                 return $res;
             }
         }
-        echo Logs::success("1AM ID Meeting getOffBusinessHours Process End: " . date('Y-m-d H:i:s') . "\n");
+        
     }
 
 }
