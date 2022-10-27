@@ -13,6 +13,8 @@ class Retailer extends DB
 
     protected $ffaGps = 'tbl_ffa_images';
 
+    protected $ffaPlanning = 'tbl_ffa_planning';
+
     protected $country = '';
 
     protected $connection;
@@ -61,33 +63,37 @@ class Retailer extends DB
         $sql = "SELECT
             $this->ffaTable.id,
             UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME($this->ffaTable.create_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."')) as create_on,
-            created_by,
-            UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME(update_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."')) as update_on,
-            update_by,
-            UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME(plan_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."')) as plan_on,
-            plan_by,
-            UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME(approved_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."')) as approved_on,
-            approved_by,
-            UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME(closed_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."')) as closed_on,
-            closed_by,
-            date,
-            team,
-            host_name,
-            host_phone,
-            month,
+            $this->ffaTable.created_by,
+            UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME($this->ffaTable.update_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."')) as update_on,
+            $this->ffaTable.update_by,
+            UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME($this->ffaTable.plan_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."')) as plan_on,
+            $this->ffaTable.plan_by,
+            UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME($this->ffaTable.approved_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."')) as approved_on,
+            $this->ffaTable.approved_by,
+            UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME($this->ffaTable.closed_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."')) as closed_on,
+            $this->ffaTable.closed_by,
+            $this->ffaTable.date,
+            $this->ffaTable.team,
+            $this->ffaTable.host_name,
+            $this->ffaTable.host_phone,
+            $this->ffaTable.month,
             $this->ffaTable.status,
-            temp_execute,
-            products,
-            territory,
-            participant_list,
-            supervisor,
-            marked_by,
-            marked_on,
-            crop,
+            $this->ffaTable.temp_execute,
+            $this->ffaTable.products,
+            $this->ffaTable.territory,
+            $this->ffaTable.participant_list,
+            $this->ffaTable.supervisor,
+            $this->ffaTable.marked_by,
+            $this->ffaTable.marked_on,
+            $this->ffaTable.crop,
             tmp.lat as imglat,
-            tmp.lng as imglng
+            tmp.lng as imglng,
+            $this->ffaPlanning.market_day_showcase
         FROM
             $this->ffaTable
+        LEFT JOIN
+            $this->ffaPlanning
+        ON $this->ffaTable.plan_id = $this->ffaPlanning.id
         LEFT JOIN
         (
             SELECT s.* FROM $this->ffaGps AS s ORDER BY s.id DESC
@@ -157,6 +163,7 @@ class Retailer extends DB
                     'crop_id'       => ($row['crop']) ? $row['crop'] : 0,
                     'lat'           => ($row['imglat']) ? $row['imglat'] : 0,
                     'lng'           => ($row['imglng']) ? $row['imglng'] : 0,
+                    'market_day_showcase'   => ($row['market_day_showcase']) ? $row['market_day_showcase'] : null
                 );
 
                 if (!empty($row['update_on']) && !is_null($row['update_on'])) {

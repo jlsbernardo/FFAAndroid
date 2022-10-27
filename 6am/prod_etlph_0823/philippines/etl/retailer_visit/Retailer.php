@@ -86,7 +86,8 @@ class Retailer extends DB
         marked_on,
         crop_id,
         lat,
-        lng
+        lng,
+        market_day_showcase
         FROM
             [$this->schemaName].[$this->stagingTable]
         WHERE
@@ -145,7 +146,8 @@ class Retailer extends DB
                     'marked_on' => $row['marked_on'],
                     'crop_id'   => $row['crop_id'],
                     'lat'     => (isset($row['lat']) && $row['lat']!==null) ? $row['lat'] : 0,
-                    'lng'     => (isset($row['lng']) && $row['lat']!==null) ? $row['lng'] : 0
+                    'lng'     => (isset($row['lng']) && $row['lat']!==null) ? $row['lng'] : 0,
+                    'market_day_showcase'   => $row['market_day_showcase'] ? $row['market_day_showcase'] : null
                 );
             }
 
@@ -284,6 +286,7 @@ class Retailer extends DB
                     $crop_id = isset($retailerRNAField['crop_id']) ? $retailerRNAField['crop_id'] : 0;
                     $lat = (isset($retailerRNAField['lat']) && $retailerRNAField['lat']!==null) ? $retailerRNAField['lat'] : 0;
                     $lng = (isset($retailerRNAField['lng']) && $retailerRNAField['lng']!==null) ? $retailerRNAField['lng'] : 0;
+                    $marketDayShowcase = (isset($retailerRNAField['market_day_showcase'])) ? $retailerRNAField['market_day_showcase'] : null;
 
                     $demoUpdateQuery = "
                         UPDATE [$this->schemaName].[$this->reportTable]
@@ -314,7 +317,8 @@ class Retailer extends DB
                             region_id      = '{$retailerRNAField['region_id']}',
                             crop_id      = '{$crop_id}',
                             lat      = '{$lat}',
-                            lng      = '{$lng}'
+                            lng      = '{$lng}',
+                            market_day_showcase = '{$marketDayShowcase}'
                         WHERE ffa_id = '$lastInserted'
                         AND country = '$country';";
 
