@@ -156,7 +156,7 @@ class Retailer extends DB
                     'crop_id'   => $row['crop_id'],
                     'lat'     => (isset($row['lat']) && $row['lat']!==null) ? $row['lat'] : 0,
                     'lng'     => (isset($row['lng']) && $row['lng']!==null) ? $row['lng'] : 0,
-                    'market_day_showcase'   => $row['market_day_showcase'] ? $row['market_day_showcase'] : null
+                    'market_day_showcase'   => $row['market_day_showcase'] ? $row['market_day_showcase'] : 0
                 );
             }
 
@@ -295,7 +295,7 @@ class Retailer extends DB
                     $crop_id = isset($retailerRNAField['crop_id']) ? $retailerRNAField['crop_id'] : 0;
                     $lat = (isset($retailerRNAField['lat']) && $retailerRNAField['lat']!==null) ? $retailerRNAField['lat'] : 0;
                     $lng = (isset($retailerRNAField['lng']) && $retailerRNAField['lng']!==null) ? $retailerRNAField['lng'] : 0;
-                    $marketDayShowcase = (isset($retailerRNAField['market_day_showcase'])) ? $retailerRNAField['market_day_showcase'] : null;
+                    $marketDayShowcase = (isset($retailerRNAField['market_day_showcase'])) ? $retailerRNAField['market_day_showcase'] : 0;
 
                     $demoUpdateQuery = "
                         UPDATE [$this->schemaName].[$this->reportTable]

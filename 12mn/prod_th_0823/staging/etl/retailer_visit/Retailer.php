@@ -163,7 +163,7 @@ class Retailer extends DB
                     'crop_id'       => ($row['crop']) ? $row['crop'] : 0,
                     'lat'           => ($row['imglat']) ? $row['imglat'] : 0,
                     'lng'           => ($row['imglng']) ? $row['imglng'] : 0,
-                    'market_day_showcase'   => ($row['market_day_showcase']) ? $row['market_day_showcase'] : null
+                    'market_day_showcase'   => (strtoupper($row['market_day_showcase']) == 'TRUE') ? 1 : 0
                 );
 
                 if (!empty($row['update_on']) && !is_null($row['update_on'])) {
@@ -256,6 +256,7 @@ class Retailer extends DB
                         $markedOn = isset($retailerRNAFields['marked_on']) ? 'marked_on =' . "'{$retailerRNAFields['marked_on']}'," : null;
                         $team = (strtolower($country)=='vietnam') ? $objVN->convert( $retailerRNAFields['team']   ) : $retailerRNAFields['team'];
                         $team = (strtolower($country)=='thailand') ? $team : trim($team);
+                        $mds = (strtoupper($retailerRNAFields['market_day_showcase']) == 'TRUE') ? 1 : 0;
 
                         $demoUpdateQuery = "
                         UPDATE [$this->schemaName].[$this->stagingTable]
@@ -285,7 +286,8 @@ class Retailer extends DB
                             temp_execute = '{$temp_execute}',
                             crop_id      = '{$retailerRNAFields['crop_id']}',
                             lat      = '{$retailerRNAFields['lat']}',
-                            lng      = '{$retailerRNAFields['lng']}'
+                            lng      = '{$retailerRNAFields['lng']}',
+                            market_day_showcase = {$mds}
                         WHERE ffa_id = '$ffaId' AND report_table = '$this->reportTable';";
 
                         $result =  $this->exec_query($demoUpdateQuery);
