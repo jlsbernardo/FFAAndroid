@@ -249,8 +249,8 @@ function run()
      
      if (is_array($targetActivityResults)) {
          $targetActivityCounts =  $targetActivityResults['num_rows'];
-         $updateFFA = new Product($countries[0], 'ffa');
-         $updateFFAResults = $updateFFA->updateRNAEtlSync($targetActivityResults['last_insert_id'], $targetActivityResults['num_rows']);
+         $updateFFA = new TargetActivity($countries[0], 'ffa');
+         $updateFFAResults = $updateFFA->updateTblRnaEtlSyncFFA($targetActivityResults['last_insert_id'], $targetActivityResults['num_rows']);
      } else {
          $targetActivityCounts = $targetActivityResults;
      }
