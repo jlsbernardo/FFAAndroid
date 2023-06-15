@@ -21,6 +21,12 @@ class Meeting extends DB
     
     protected $schemaName = 'analytical';
 
+    protected $limitPerPage = 20000;
+
+    protected $limitChunked = 1000;
+
+    protected $deletedModuleName = 'meeting';
+
     public function __construct($country = '', $connection = 'ffa')
     {
         $this->country = $country;
@@ -64,153 +70,105 @@ class Meeting extends DB
     {
         $checkLastRecord = $this->__checkLastRecordFFASync();
         $lastInserted = ($checkLastRecord) ? $checkLastRecord['last_insert_id'] : null;
-        $only2022_data = strtotime('2022-04-01 00:00:00');
-        
-        $sql = "SELECT
-            $this->ffaTable.id,
-            UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME($this->ffaTable.create_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."')) as create_on,
-            created_by,
-            UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME(update_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."')) as update_on,
-            update_by,
-            UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME(plan_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."')) as plan_on,
-            plan_by,
-            UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME(approved_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."')) as approved_on,
-            approved_by,
-            UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME(closed_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."')) as closed_on,
-            closed_by,
-            date,
-            team,
-            host_name,
-            host_phone,
-            month,
-            $this->ffaTable.status,
-            temp_execute,
-            products,
-            territory,
-            participant_list,
-            supervisor,
-            marked_by,
-            marked_on,
-            crop,
-            tmp.lat as imglat,
-            tmp.lng as imglng
-        FROM
-            $this->ffaTable
-        LEFT JOIN
-        (
-            SELECT s.* FROM $this->ffaGps AS s ORDER BY s.id DESC
-        ) AS tmp ON $this->ffaTable.id = tmp.ref_id
-        AND tmp.category='meeting'
-        WHERE
-            UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME($this->ffaTable.create_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."'))>=$only2022_data
-        GROUP BY 
-            $this->ffaTable.id 
-        order by
-            $this->ffaTable.create_on
-        desc";
 
-        $meetingInsertQuery = "";
-        $result = $this->exec_query($sql);
-        $countMeetingAffectedRows = 0;
-        $data = [];
-        $country = $this->country['country_name'];
-        if ($result->num_rows > 0) {
-            while ($row = $result->fetch_assoc()) {
-                $deleted = $this->__checkDeleted($row['id']);
-                $territory = $row['territory'];
-
-                $zoneRegion = $this->getMeetingZoneRegion($territory);
-                if($row['closed_by']!==null && $row['closed_by']==$row['created_by']){
-                    $supervisorId = $territory!==null ? $this->getSupervisor($row['id'],intval($territory),$row['team']) : null;
-                }else{
-                    $supervisorId = $row['created_by'];
-                }
-
-                $temp_execute_decode = json_decode($row['temp_execute'], true);
-
-                $temp_execute = (isset($temp_execute_decode) && $temp_execute_decode['client']['time']) ? $temp_execute_decode['client']['time'] : null;
-
-                $objVN = new vn_charset_conversion();
-                $hn = preg_replace("/[^a-zA-Z0-9]+/", "", html_entity_decode($row['host_name'], ENT_QUOTES));
-                $hostname = (strtolower($country)=='vietnam') ? $objVN->convert($hn) : $hn;
-                $team = (strtolower($country)=='vietnam') ? $objVN->convert($row['team']) : $row['team'];
-                $products = (strtolower($country)=='vietnam') ? $objVN->convert($row['products']) : $row['products'];
-                $participants = preg_replace('~[\x00\x0A\x0D\x1A\x22\x27\x5C]~u', '\\\$0', str_replace("'", "", $row['participant_list']));
-                $participant_list = (strtolower($country)=='vietnam') ? $objVN->convert($participants) : $participants;
-
-                $meetingRNAFields = array(
-                    'ffa_id'        => $row['id'],
-                    'deleted'       => $deleted ? '1' : '0',
-                    'report_table'  => $this->reportTable,
-                    'create_on'     => ($row['create_on']) ? $row['create_on'] : 0,
-                    // 'created_by'    => $row['created_by'],
-                    'created_by'    =>$supervisorId,
-                    'update_by'     => $row['update_by'],
-                    'plan_by'       => $row['plan_by'],
-                    'approved_by'   => $row['approved_by'],
-                    'closed_by'     => $row['closed_by'],
-                    'team'          => (strtolower($country)=='thailand') ? $team : trim($team),
-                    'host_name'     => $hostname,
-                    'host_phone'    => $row['host_phone'],
-                    'month'         => $row['month'],
-                    'status'        => $row['status'],
-                    'temp_execute'  => $temp_execute,
-                    'products'      => $products,
-                    'territory'     => $row['territory'],
-                    'zone'          => $zoneRegion['zone'],
-                    'region'        => $zoneRegion['region'],
-                    'participant_list' => $participant_list,
-                    'supervisor'    => $row['supervisor'],
-                    'marked_by'     => !is_null($row['marked_by']) ? $row['marked_by'] : 0,
-                    'crop_id'       => ($row['crop']) ? $row['crop'] : 0,
-                    'lat'           => ($row['imglat']) ? $row['imglat'] : 0,
-                    'lng'           => ($row['imglng']) ? $row['imglng'] : 0,
-                );
-
-                if (!empty($row['update_on']) && !is_null($row['update_on'])) {
-                    $meetingRNAFields['update_on'] = $row['update_on'];
-                }
-
-                if (!empty($row['closed_on']) && !is_null($row['closed_on'])) {
-                    $meetingRNAFields['closed_on'] = $row['closed_on'];
-                }
-                
-                if (!empty($row['approved_on']) && !is_null($row['approved_on'])) {
-                    $meetingRNAFields['approved_on'] = $row['approved_on'];
-                }
-
-                if (!empty($row['execute_on']) && !is_null($row['execute_on'])) {
-                    $meetingRNAFields['execute_on'] = $row['execute_on'];
-                }
-
-                if (!empty($row['plan_on']) && !is_null($row['plan_on'])) {
-                    $meetingRNAFields['plan_on'] = $row['plan_on'];
-                }
-
-                if (!empty($row['date']) && !is_null($row['date'])) {
-                    $meetingRNAFields['date'] = $row['date'];
-                }
-
-                if (!empty($row['marked_on']) && !is_null($row['marked_on'])) {
-                    $meetingRNAFields['marked_on'] = $row['marked_on'];
-                }
-
-                $data[] = $meetingRNAFields;
-                $countMeetingAffectedRows++;
-            }
-
-            return [
-                'data' => $data,
-                'count' => $countMeetingAffectedRows,
-                'last_inserted' => $lastInserted
-            ];
-
-        } else {
+        //Get total count for chunking 
+        $totalCountQuery = $this->getDataFromFFAQuery(1);
+        $resultTotalCount = $this->exec_query($totalCountQuery);
+        if ($resultTotalCount->num_rows > 0) {
+            $resultTotalCountRow = $resultTotalCount->fetch_assoc();
+            $totalCount = $resultTotalCountRow['total_count'];
+        }
+        if($totalCount == 0) {
             $message = "No Meeting Records to sync";
             return [
                 'data'  => $message,
             ];
         }
+
+        $query = $this->getDataFromFFAQuery();
+        $queryList = populate_chunked_query_list($query, $totalCount, $this->limitPerPage);
+        $countMeetingAffectedRows = 0;
+        $data = [];
+        $country = $this->country['country_name'];
+        foreach ($queryList as $query) {
+            $result = $this->exec_query($query); 
+            if ($result->num_rows > 0) {
+                $rows = $result->fetch_all(MYSQLI_ASSOC);
+                $ffaIds = array_column($rows, 'id');
+                $territoryIds = array_column($rows, 'territory');
+                $deletedFFAList = $this->getDeletedFFA($ffaIds);
+                $zoneRegionList = $this->getZoneRegionList($territoryIds);
+                foreach($rows as $row) {
+
+                    $deleted = $this->isDeletedFFA($deletedFFAList, $row['id']);
+                    $territory = $row['territory'];
+
+                    $zoneRegion = $this->getZoneRegionSpecific($zoneRegionList, $territory);
+                    if($row['closed_by']!==null && $row['closed_by']==$row['created_by']){
+                        $supervisorId = $territory!==null ? $this->getSupervisor($row['id'],intval($territory),$row['team']) : null;
+                    }else{
+                        $supervisorId = $row['created_by'];
+                    }
+
+                    $temp_execute_decode = json_decode($row['temp_execute'], true);
+
+                    $temp_execute = (isset($temp_execute_decode) && $temp_execute_decode['client']['time']) ? $temp_execute_decode['client']['time'] : null;
+
+                    $objVN = new vn_charset_conversion();
+                    $hn = preg_replace("/[^a-zA-Z0-9]+/", "", html_entity_decode($row['host_name'], ENT_QUOTES));
+                    $hostname = (strtolower($country)=='vietnam') ? $objVN->convert($hn) : $hn;
+                    $team = (strtolower($country)=='vietnam') ? $objVN->convert($row['team']) : $row['team'];
+                    $products = (strtolower($country)=='vietnam') ? $objVN->convert($row['products']) : $row['products'];
+                    $participants = preg_replace('~[\x00\x0A\x0D\x1A\x22\x27\x5C]~u', '\\\$0', str_replace("'", "", $row['participant_list']));
+                    $participant_list = (strtolower($country)=='vietnam') ? $objVN->convert($participants) : $participants;
+
+                    $meetingRNAFields = array(
+                        'ffa_id'        => $row['id'],
+                        'deleted'       => $deleted ? '1' : '0',
+                        'report_table'  => $this->reportTable,
+                        'create_on'     => ($row['create_on']) ? $row['create_on'] : 0,
+                        // 'created_by'    => $row['created_by'],
+                        'created_by'    =>$supervisorId,
+                        'update_by'     => $row['update_by'],
+                        'plan_by'       => $row['plan_by'],
+                        'approved_by'   => $row['approved_by'],
+                        'closed_by'     => $row['closed_by'],
+                        'team'          => (strtolower($country)=='thailand') ? $team : trim($team),
+                        'host_name'     => $hostname,
+                        'host_phone'    => $row['host_phone'],
+                        'month'         => $row['month'],
+                        'status'        => $row['status'],
+                        'temp_execute'  => $temp_execute,
+                        'products'      => $products,
+                        'territory'     => $row['territory'],
+                        'zone'          => $zoneRegion['zone'],
+                        'region'        => $zoneRegion['region'],
+                        'participant_list' => $participant_list,
+                        'supervisor'    => $row['supervisor'],
+                        'marked_by'     => !is_null($row['marked_by']) ? $row['marked_by'] : 0,
+                        'crop_id'       => ($row['crop']) ? $row['crop'] : 0,
+                        'lat'           => ($row['imglat']) ? $row['imglat'] : 0,
+                        'lng'           => ($row['imglng']) ? $row['imglng'] : 0,
+                        'update_on'     => !empty($row['update_on']) && !is_null($row['update_on']) ?  $row['update_on'] : NULL,
+                        'closed_on'     => !empty($row['closed_on']) && !is_null($row['closed_on']) ?  $row['closed_on'] : NULL,
+                        'approved_on'   => !empty($row['approved_on']) && !is_null($row['approved_on']) ?  $row['approved_on'] : NULL,
+                        'execute_on'    => !empty($row['execute_on']) && !is_null($row['execute_on']) ?  $row['execute_on'] : NULL,
+                        'plan_on'       => !empty($row['plan_on']) && !is_null($row['plan_on']) ?  $row['plan_on'] : NULL,
+                        'date'          => !empty($row['date']) && !is_null($row['date']) ?  $row['date'] : NULL,
+                        'marked_on'     => !empty($row['marked_on']) && !is_null($row['marked_on']) ?  $row['marked_on'] : NULL,
+                    );
+
+                    $data[] = $meetingRNAFields;
+                    $countMeetingAffectedRows++;
+                }
+            }
+        }
+
+        return [
+            'data' => $data,
+            'count' => $countMeetingAffectedRows,
+            'last_inserted' => $lastInserted
+        ];
     }
 
     /**
@@ -224,75 +182,80 @@ class Meeting extends DB
         $count = 0;
         $objVN = new vn_charset_conversion();
         $country = $this->country['country_name'];
-        foreach ($data as $meetingRNAField) {
-            if (!empty($meetingRNAField['create_on']) && !is_null($meetingRNAField['create_on']) || !empty($meetingRNAField['update_on']) && !is_null($meetingRNAField['update_on'])) {
-                // if (date('Y-m-d') == convert_to_datetime($meetingRNAField['create_on'], 'Y-m-d') || date('Y-m-d') == convert_to_datetime($meetingRNAField['update_on'], 'Y-m-d')) {
-                    $results = $this->__checkRecordStaging($meetingRNAField);
-
-                    if (sqlsrv_num_rows($results) < 1) {
-                        $strColumns = implode(', ', array_keys($meetingRNAField));
-                        $strValues =  " '" . implode("', '", array_values($meetingRNAField)) . "' ";
-                        $meetingInsertQuery = "INSERT INTO [$this->schemaName].[$this->stagingTable] ({$strColumns}) VALUES ({$strValues});";
-
-                        $result = $this->exec_query($meetingInsertQuery);
-                        if ($result) {
-                            $count += 1;
+        $dataChunkeds = array_chunk($data, $this->limitChunked);
+        foreach ($dataChunkeds as $dataChunked) {
+            $ffaIds = array_column($dataChunked, 'ffa_id');
+            $ffaRecordStagingList = $this->getRecordStagingList($ffaIds);
+            $strColumns = implode(', ', array_keys($dataChunked[0]));
+            $insertQuery = "INSERT INTO [$this->schemaName].[$this->stagingTable] ({$strColumns}) VALUES";
+            $insertQueryValue = [];
+            foreach ($dataChunked as $meetingRNAField) {
+                if (!empty($meetingRNAField['create_on']) && !is_null($meetingRNAField['create_on']) || !empty($meetingRNAField['update_on']) && !is_null($meetingRNAField['update_on'])) {
+                    // if (date('Y-m-d') == convert_to_datetime($meetingRNAField['create_on'], 'Y-m-d') || date('Y-m-d') == convert_to_datetime($meetingRNAField['update_on'], 'Y-m-d')) {
+                        $isInsertedStaging = $this->isInsertedStaging($ffaRecordStagingList, $meetingRNAField['ffa_id']);
+                        if (!$isInsertedStaging) {
+                            $strValues =  populate_insert_values(array_values($meetingRNAField));
+                            $insertQueryValue[] = "({$strValues})";
+                            $count++;
+                            
+                        }  else {
+                            $plan_on = (isset($meetingRNAField['plan_on'])) ? 'plan_on = ' . "'{$meetingRNAField['plan_on']}'," : null;
+                            $approved_on = (isset($meetingRNAField['approved_on'])) ? 'approved_on =' . "'{$meetingRNAField['approved_on']}'," : null;
+                            $closed_on = (isset($meetingRNAField['closed_on'])) ? 'closed_on =' . "'{$meetingRNAField['closed_on']}'," : null;
+                            $date = isset($meetingRNAField['date']) ? 'date =' . "'{$meetingRNAField['date']}'," : null;
+    
+                            $ffaId = $meetingRNAField['ffa_id'];
+                            $participantList = preg_replace('~[\x00\x0A\x0D\x1A\x22\x27\x5C]~u', '\\\$0', $meetingRNAField['participant_list']);
+                            $temp_execute =  $meetingRNAField['temp_execute'];
+    
+                            $markedBy = !is_null($meetingRNAField['marked_by']) ? $meetingRNAField['marked_by'] : 0;
+                            $markedOn = isset($meetingRNAField['marked_on']) ? 'marked_on =' . "'{$meetingRNAField['marked_on']}'," : null;
+                            $team = (strtolower($country)=='vietnam') ? $objVN->convert( $meetingRNAField['team']   ) : $meetingRNAField['team'];
+                            $team = (strtolower($country)=='thailand') ? $team : trim($team);
+    
+                            $meetingUpdateQuery = "
+                            UPDATE [$this->schemaName].[$this->stagingTable]
+                            SET 
+                                update_on= '{$meetingRNAField['update_on']}',
+                                update_by = '{$meetingRNAField['update_by']}',
+                                {$plan_on}
+                                plan_by   = '{$meetingRNAField['plan_by']}',
+                                {$approved_on}
+                                approved_by = '{$meetingRNAField['approved_by']}',
+                                {$closed_on}
+                                closed_by      = '{$meetingRNAField['closed_by']}',
+                                {$date}
+                                team      = '{$team}',
+                                deleted = {$meetingRNAField['deleted']},
+                                host_name      = '{$meetingRNAField['host_name']}',
+                                host_phone      = '{$meetingRNAField['host_phone']}',
+                                month      = '{$meetingRNAField['month']}',
+                                products      = '{$meetingRNAField['products']}',
+                                territory      = '{$meetingRNAField['territory']}',
+                                zone      = '{$meetingRNAField['zone']}',
+                                region      = '{$meetingRNAField['region']}',
+                                participant_list = '{$participantList}',
+                                supervisor = '{$meetingRNAField['supervisor']}',
+                                marked_by = '{$markedBy}',
+                                {$markedOn}
+                                temp_execute = '{$temp_execute}',
+                                crop_id     = '{$meetingRNAField['crop_id']}',
+                                lat      = '{$meetingRNAField['lat']}',
+                                lng      = '{$meetingRNAField['lng']}'
+                            WHERE ffa_id = '$ffaId' AND report_table = '$this->reportTable';";
+    
+                            $result =  $this->exec_query($meetingUpdateQuery);
+                            if ($result) {
+                                $count += sqlsrv_rows_affected($result);
+                            }
                         }
-                    } else {
-                        $plan_on = (isset($meetingRNAField['plan_on'])) ? 'plan_on = ' . "'{$meetingRNAField['plan_on']}'," : null;
-                        $approved_on = (isset($meetingRNAField['approved_on'])) ? 'approved_on =' . "'{$meetingRNAField['approved_on']}'," : null;
-                        $closed_on = (isset($meetingRNAField['closed_on'])) ? 'closed_on =' . "'{$meetingRNAField['closed_on']}'," : null;
-                        $date = isset($meetingRNAField['date']) ? 'date =' . "'{$meetingRNAField['date']}'," : null;
-
-                        $ffaId = $meetingRNAField['ffa_id'];
-                        $participantList = preg_replace('~[\x00\x0A\x0D\x1A\x22\x27\x5C]~u', '\\\$0', $meetingRNAField['participant_list']);
-                        $temp_execute =  $meetingRNAField['temp_execute'];
-
-                        $markedBy = !is_null($meetingRNAField['marked_by']) ? $meetingRNAField['marked_by'] : 0;
-                        $markedOn = isset($meetingRNAField['marked_on']) ? 'marked_on =' . "'{$meetingRNAField['marked_on']}'," : null;
-                        $team = (strtolower($country)=='vietnam') ? $objVN->convert( $meetingRNAField['team']   ) : $meetingRNAField['team'];
-                        $team = (strtolower($country)=='thailand') ? $team : trim($team);
-
-                        $meetingUpdateQuery = "
-                        UPDATE [$this->schemaName].[$this->stagingTable]
-                        SET 
-                            update_on= '{$meetingRNAField['update_on']}',
-                            update_by = '{$meetingRNAField['update_by']}',
-                            {$plan_on}
-                            plan_by   = '{$meetingRNAField['plan_by']}',
-                            {$approved_on}
-                            approved_by = '{$meetingRNAField['approved_by']}',
-                            {$closed_on}
-                            closed_by      = '{$meetingRNAField['closed_by']}',
-                            {$date}
-                            team      = '{$team}',
-                            deleted = {$meetingRNAField['deleted']},
-                            host_name      = '{$meetingRNAField['host_name']}',
-                            host_phone      = '{$meetingRNAField['host_phone']}',
-                            month      = '{$meetingRNAField['month']}',
-                            products      = '{$meetingRNAField['products']}',
-                            territory      = '{$meetingRNAField['territory']}',
-                            zone      = '{$meetingRNAField['zone']}',
-                            region      = '{$meetingRNAField['region']}',
-                            participant_list = '{$participantList}',
-                            supervisor = '{$meetingRNAField['supervisor']}',
-                            marked_by = '{$markedBy}',
-                            {$markedOn}
-                            temp_execute = '{$temp_execute}',
-                            crop_id     = '{$meetingRNAField['crop_id']}',
-                            lat      = '{$meetingRNAField['lat']}',
-                            lng      = '{$meetingRNAField['lng']}'
-                        WHERE ffa_id = '$ffaId' AND report_table = '$this->reportTable';";
-
-                        $result =  $this->exec_query($meetingUpdateQuery);
-                        if ($result) {
-                            $count += sqlsrv_rows_affected($result);
-                        }
-                    }
-                // }
+                    // }
+                }                
             }
-
-            
+            if(!empty($insertQueryValue)) {
+                $insertQuery .= implode(',', $insertQueryValue);
+                $result = $this->exec_query($insertQuery);
+            }
         }
 
         return [
@@ -391,4 +354,63 @@ class Meeting extends DB
         return $supId;
     }
 
+    public function getDataFromFFAQuery($isCount = 0) {
+
+        $getDataDateTime = strtotime('2023-01-01 00:00:00');
+
+        $select = "SELECT
+                    $this->ffaTable.id,
+                    UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME($this->ffaTable.create_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."')) as create_on,
+                    created_by,
+                    UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME(update_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."')) as update_on,
+                    update_by,
+                    UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME(plan_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."')) as plan_on,
+                    plan_by,
+                    UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME(approved_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."')) as approved_on,
+                    approved_by,
+                    UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME(closed_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."')) as closed_on,
+                    closed_by,
+                    date,
+                    team,
+                    host_name,
+                    host_phone,
+                    month,
+                    $this->ffaTable.status,
+                    temp_execute,
+                    products,
+                    territory,
+                    participant_list,
+                    supervisor,
+                    marked_by,
+                    marked_on,
+                    crop,
+                    tmp.lat as imglat,
+                    tmp.lng as imglng";
+
+        if($isCount) {
+            $select = "SELECT COUNT(*) OVER () AS total_count";
+        }
+
+        $sql = "{$select}
+        FROM
+            $this->ffaTable
+        LEFT JOIN
+        (
+            SELECT s.* FROM $this->ffaGps AS s ORDER BY s.id DESC
+        ) AS tmp ON $this->ffaTable.id = tmp.ref_id
+        AND tmp.category='meeting'
+        WHERE
+            UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME($this->ffaTable.create_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."'))>=$getDataDateTime
+        GROUP BY 
+            $this->ffaTable.id 
+        order by
+            $this->ffaTable.create_on
+        desc";
+
+
+        if($isCount) {
+            $sql .= " LIMIT 1";
+        }
+        return $sql;
+    }
 }

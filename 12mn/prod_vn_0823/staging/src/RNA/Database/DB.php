@@ -117,7 +117,7 @@ class DB
     public function exec_query($sql)
     {
         if ($this->connection == 'analytical') {
-
+            // echo  date('Y-m-d H:i:s') . ':' . $sql . PHP_EOL;
             $query = sqlsrv_query( $this->db, $sql,  array(), array('Scrollable' => 'buffered'));
 
             if ($query === false) {
@@ -127,6 +127,7 @@ class DB
             return $query;
             
         } else {
+            // echo  date('Y-m-d H:i:s') . ':' . $sql . PHP_EOL;
             $query = $this->db->query($sql);
 
             if (!mysqli_query($this->db, $sql)) {
@@ -152,4 +153,132 @@ class DB
 
     }
     
+    public function getDeletedFFA($ffaIds)
+    {
+        $ffaIdsIn = implode(',', $ffaIds);
+        $sql = "SELECT ffa_id,deleted_at FROM tbl_deleted_activities WHERE module = '$this->deletedModuleName' AND ffa_id IN ($ffaIdsIn)";
+        $result = $this->exec_query($sql);
+        $data = [];
+
+        if ($result->num_rows > 0) {
+            foreach($result->fetch_all(MYSQLI_ASSOC) as $row) {
+                $data [$row['ffa_id']] = [
+                    'is_deleted' => date('Y-m-d H:i') >= $row['deleted_at']  ? 1 : 0
+                ];
+            }
+        }
+        return $data;
+    }
+
+    public function isDeletedFFA($deletedFFAList, $ffaId) {
+        if(empty($deletedFFAList)) {
+            return false;
+        }
+
+        if(isset($deletedFFAList[$ffaId])) {
+            return $deletedFFAList[$ffaId]['is_deleted'];
+        }
+
+        return false;
+    }
+
+    public function getZoneRegionList($territoryIds) {
+        $uniqueTerritoryIds = array_unique($territoryIds);
+        $territoryIdsIn = implode(',', $uniqueTerritoryIds);
+        $sql = "SELECT zone.id AS zone_id, zone.level AS zone_level,region.level AS region_level
+                    FROM tbl_area_structure AS zone
+                    LEFT JOIN tbl_area_structure AS region
+                    ON zone.level = region.id
+                    WHERE zone.id IN($territoryIdsIn)";
+        $result = $this->exec_query($sql);
+        $data = [];
+        if ($result->num_rows > 0) {
+            $data = $result->fetch_all(MYSQLI_ASSOC);
+        }
+
+        return $data;
+
+    }
+
+    public function getZoneRegionSpecific($territoryList, $territoryId) {
+
+        $zoneId = null;
+        $regionId = null;
+
+        if(!empty($territoryList)) {
+            $key = array_search($territoryId, array_column($territoryList, 'zone_id'));
+            if(isset($territoryList[$key])) {
+                $zoneId = $territoryList[$key]['zone_level'];
+                $regionId = $territoryList[$key]['region_level'];
+            }
+        }
+
+        return [
+            'zone'  => $zoneId,
+            'region'    => $regionId
+        ];
+    }
+
+    /**
+     * Checking record in staging table
+     *
+     * @param $ffaIds
+     * @return object | array
+     */
+    public function getRecordStagingList($ffaIds)
+    {
+        $ffaIdsIn = implode(',', $ffaIds);
+        $sql = "SELECT ffa_id, report_table
+                FROM [$this->schemaName].[$this->stagingTable] 
+                WHERE report_table = '$this->reportTable' AND ffa_id IN ($ffaIdsIn)";
+        $result = $this->exec_query($sql);
+        $data = [];
+        if (sqlsrv_num_rows($result) > 0) {
+            while ($row = sqlsrv_fetch_array($result)) {
+                $data[$row['ffa_id']] = $row['ffa_id'];
+            }
+        }
+        return $data;
+    }
+
+    public function isInsertedStaging($ffaRecordStagingList, $ffaId) {
+        if(empty($ffaRecordStagingList)) {
+            return false;
+        }
+
+        if(isset($ffaRecordStagingList[$ffaId])) {
+            return true;
+        }
+
+        return false;        
+    }
+
+    public function getRecordStagingListByColumn($ffaIds, $column)
+    {
+        $ffaIdsIn = implode(',', $ffaIds);
+        $sql = "SELECT $column
+                FROM [$this->schemaName].[$this->stagingTable] 
+                WHERE report_table = '$this->reportTable' AND ffa_id IN ($ffaIdsIn)";
+        $result = $this->exec_query($sql);
+        $data = [];
+        if (sqlsrv_num_rows($result) > 0) {
+            while ($row = sqlsrv_fetch_array($result)) {
+                $data[$row['ffa_id']] = $row;
+            }
+        }
+        return $data;
+    }
+
+    public function getInsertedStaging($ffaRecordStagingList, $ffaId) {
+        if(empty($ffaRecordStagingList)) {
+            return false;
+        }
+
+        if(isset($ffaRecordStagingList[$ffaId])) {
+            return $ffaRecordStagingList[$ffaId];
+        }
+
+        return false;        
+    }
+
 }

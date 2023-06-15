@@ -28,11 +28,11 @@ class Staging extends DB
             $row = sqlsrv_fetch_array($results);
 
             if(empty($row['create_on']) && is_null($row['create_on']) || empty($row['update_on']) && is_null($row['update_on'])) {
-                $sql = "DELETE FROM [$this->schemaName].[$this->stagingTable] ";
+                $sql = "TRUNCATE TABLE [$this->schemaName].[$this->stagingTable] ";
                 $this->exec_query($sql);
             } else {
                 if (convert_to_datetime($row['create_on'], 'Y-m-d') < date('Y-m-d') || convert_to_datetime($row['update_on'], 'Y-m-d') < date('Y-m-d')) {
-                    $sql = "DELETE FROM [$this->schemaName].[$this->stagingTable]";
+                    $sql = "TRUNCATE TABLE [$this->schemaName].[$this->stagingTable]";
                     $this->exec_query($sql);
                 }
             }

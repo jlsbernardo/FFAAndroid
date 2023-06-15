@@ -55,3 +55,31 @@ if (!function_exists('time_in_range')) {
         return false;
     }
 }
+
+
+
+if (!function_exists('populate_chunked_query_list')) {
+    /**
+     * Populate Chunked Query List
+     *
+     * @param string $sql
+     * @param string $totalCount
+     * @param int $limitPerPage
+     * @return array
+     */
+    function populate_chunked_query_list(string $sql, int $totalCount, int $limitPerPage = 10000)
+    {
+        $totalPage = ceil($totalCount / $limitPerPage);
+
+        $queryList = [];
+        $offSet = $limitPerPage;
+        for($i=1;$i=$totalPage;$i++){
+
+            $queryList [] = $sql + "LIMIT {$offSet}, {$limitPerPage}";
+            $offSet += $limitPerPage;
+    
+        }
+
+        return $queryList;
+    }
+}

@@ -69,56 +69,9 @@ class Demo extends DB
 
         $checkLastRecord = $this->__checkLastRecordFFASync();
         $lastInserted = ($checkLastRecord) ? $checkLastRecord['last_insert_id'] : null;
-        $only2022_data = strtotime('2022-04-01 00:00:00');
 
-        $sql = "SELECT
-            $this->ffaTable.id,
-            UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME($this->ffaTable.create_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."')) as create_on,
-            created_by,
-            UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME(update_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."')) as update_on,
-            update_by,
-            UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME(plan_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."')) as plan_on,
-            plan_by,
-            UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME(approved_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."')) as approved_on,
-            approved_by,
-            UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME(closed_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."')) as closed_on,
-            closed_by,
-            execute_on,
-            execute_by,
-            date,
-            followup,
-            team,
-            host_name,
-            host_phone,
-            month,
-            $this->ffaTable.status,
-            temp_followup,
-            temp_execute,
-            products,
-            territory,
-            supervisore,
-            supervisorf,
-            marked_by_e,
-            marked_by_f,
-            marked_on_e,
-            marked_on_f,
-            crop,
-            tmp.lat as imglat,
-            tmp.lng as imglng
-        FROM
-            $this->ffaTable
-        LEFT JOIN
-        (
-            SELECT s.* FROM $this->ffaGps AS s ORDER BY s.id DESC
-        ) AS tmp ON $this->ffaTable.id = tmp.ref_id
-        AND tmp.category='demo' AND (tmp.sub_category='before' OR tmp.sub_category='after')
-        WHERE
-            UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME($this->ffaTable.create_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."'))>=$only2022_data
-        GROUP BY 
-            $this->ffaTable.id           
-        order by
-            $this->ffaTable.create_on
-        desc";
+        $totalCount = $this->getDataFromFFAQuery(1);
+        $query = $this->getDataFromFFAQuery();
 
         $data = [];
         $result = $this->exec_query($sql);
@@ -437,5 +390,67 @@ class Demo extends DB
         echo Logs::success("12MN ID Demo getSupervisor Process Start: " . date('Y-m-d H:i:s') . "\n");
 
         return $supId;
+    }
+
+    private function getDataFromFFAQuery($isCount = 0) {
+
+        $getDataDateTime =  strtotime('2023-01-01 00:00:00');
+
+        $select = "SELECT
+            $this->ffaTable.id,
+            UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME($this->ffaTable.create_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."')) as create_on,
+            created_by,
+            UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME(update_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."')) as update_on,
+            update_by,
+            UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME(plan_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."')) as plan_on,
+            plan_by,
+            UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME(approved_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."')) as approved_on,
+            approved_by,
+            UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME(closed_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."')) as closed_on,
+            closed_by,
+            execute_on,
+            execute_by,
+            date,
+            followup,
+            team,
+            host_name,
+            host_phone,
+            month,
+            $this->ffaTable.status,
+            temp_followup,
+            temp_execute,
+            products,
+            territory,
+            supervisore,
+            supervisorf,
+            marked_by_e,
+            marked_by_f,
+            marked_on_e,
+            marked_on_f,
+            crop,
+            tmp.lat as imglat,
+            tmp.lng as imglng";
+
+        if($isCount) {
+            $select = "SELECT COUNT(*) OVER () AS total_count";
+        }
+
+        $sql = "{$select}
+        FROM
+            $this->ffaTable
+        LEFT JOIN
+        (
+            SELECT s.* FROM $this->ffaGps AS s ORDER BY s.id DESC
+        ) AS tmp ON $this->ffaTable.id = tmp.ref_id
+        AND tmp.category='demo' AND (tmp.sub_category='before' OR tmp.sub_category='after')
+        WHERE
+            UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME($this->ffaTable.create_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."'))>=$getDataDateTime
+        GROUP BY 
+            $this->ffaTable.id           
+        ORDER BY
+            $this->ffaTable.create_on DESC";
+
+        return $sql;
+
     }
 }

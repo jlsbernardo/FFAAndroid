@@ -23,6 +23,13 @@ class Retailer extends DB
 
     protected $schemaName = 'analytical';
 
+    protected $limitPerPage = 20000;
+
+    protected $limitChunked = 1000;
+
+    protected $deletedModuleName = 'retailer';
+
+
     public function __construct($country = '', $connection = 'ffa')
     {
         $this->country = $country;
@@ -59,159 +66,105 @@ class Retailer extends DB
     {
         $checkLastRecord = $this->__checkLastRecordFFASync();
         $lastInserted = ($checkLastRecord) ? $checkLastRecord['last_insert_id'] : null;
-        $only2022_data = strtotime('2022-04-01 00:00:00');
-        $sql = "SELECT
-            $this->ffaTable.id,
-            UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME($this->ffaTable.create_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."')) as create_on,
-            $this->ffaTable.created_by,
-            UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME($this->ffaTable.update_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."')) as update_on,
-            $this->ffaTable.update_by,
-            UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME($this->ffaTable.plan_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."')) as plan_on,
-            $this->ffaTable.plan_by,
-            UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME($this->ffaTable.approved_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."')) as approved_on,
-            $this->ffaTable.approved_by,
-            UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME($this->ffaTable.closed_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."')) as closed_on,
-            $this->ffaTable.closed_by,
-            $this->ffaTable.date,
-            $this->ffaTable.team,
-            $this->ffaTable.host_name,
-            $this->ffaTable.host_phone,
-            $this->ffaTable.month,
-            $this->ffaTable.status,
-            $this->ffaTable.temp_execute,
-            $this->ffaTable.products,
-            $this->ffaTable.territory,
-            $this->ffaTable.participant_list,
-            $this->ffaTable.supervisor,
-            $this->ffaTable.marked_by,
-            $this->ffaTable.marked_on,
-            $this->ffaTable.crop,
-            tmp.lat as imglat,
-            tmp.lng as imglng,
-            $this->ffaPlanning.market_day_showcase
-        FROM
-            $this->ffaTable
-        LEFT JOIN
-            $this->ffaPlanning
-        ON $this->ffaTable.plan_id = $this->ffaPlanning.id
-        LEFT JOIN
-        (
-            SELECT s.* FROM $this->ffaGps AS s ORDER BY s.id DESC
-        ) AS tmp ON $this->ffaTable.id = tmp.ref_id
-        AND tmp.category='retailer'
-        WHERE
-            UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME($this->ffaTable.create_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."'))>=$only2022_data
-        GROUP BY 
-            $this->ffaTable.id
-        order by
-            $this->ffaTable.create_on
-        desc";
 
-        $retailerInsertQuery = "";
-        $result = $this->exec_query($sql);
-        $data = [];
-        $country = $this->country['country_name'];
-        if ($result->num_rows > 0) {
-            while ($row = $result->fetch_assoc()) {
-
-                $deleted = $this->__checkDeleted($row['id']);
-                $territory = $row['territory'];
-
-                $zoneRegion = $this->getRetailerZoneRegion($territory);
-                if($row['closed_by']!==null && $row['closed_by']==$row['created_by']){
-                    $supervisorId = $territory!==null ? $this->getSupervisor($row['id'],intval($territory),$row['team']) : null;
-                }else{
-                    $supervisorId = $row['created_by'];
-                }
-
-                $temp_execute_decode = json_decode($row['temp_execute'], true);
-
-                $temp_execute = (isset($temp_execute_decode) && $temp_execute_decode['client']['time']) ? $temp_execute_decode['client']['time'] : null;
-
-                $objVN = new vn_charset_conversion();
-                $hn = preg_replace("/[^a-zA-Z0-9]+/", "", html_entity_decode($row['host_name'], ENT_QUOTES));
-                $hostname = (strtolower($country)=='vietnam') ? $objVN->convert($hn) : $hn;
-                $team = (strtolower($country)=='vietnam') ? $objVN->convert($row['team']) : $row['team'];
-                $products = (strtolower($country)=='vietnam') ? $objVN->convert($row['products']) : $row['products'];
-                $participants = preg_replace('~[\x00\x0A\x0D\x1A\x22\x27\x5C]~u', '\\\$0', str_replace("'", "", $row['participant_list']));
-                $participant_list = (strtolower($country)=='vietnam') ? $objVN->convert($participants) : $participants;
-
-                $retailerRNAFields = array(
-                    'ffa_id'        => $row['id'],
-                    'deleted'       => $deleted ? '1' : '0',
-                    'report_table'  => $this->reportTable,
-                    'create_on'     => ($row['create_on']) ? $row['create_on'] : 0,
-                    // 'created_by'    => $row['created_by'],
-                    'created_by'    =>$supervisorId,
-                    'update_by'     => $row['update_by'],
-                    'plan_by'       => $row['plan_by'],
-                    'approved_by'   => $row['approved_by'],
-                    'closed_by'     => $row['closed_by'],
-                    'team'          => (strtolower($country)=='thailand') ? $team : trim($team),
-                    'host_name'     => $hostname,
-                    'host_phone'    => $row['host_phone'],
-                    'month'         => $row['month'],
-                    'status'        => $row['status'],
-                    'temp_execute'  => $temp_execute,
-                    'products'      => $products,
-                    'territory'     => $row['territory'],
-                    'zone'          => $zoneRegion['zone'],
-                    'region'        => $zoneRegion['region'],
-                    'participant_list' => $participant_list,
-                    'supervisor'    => $row['supervisor'],
-                    'marked_by'     => !is_null($row['marked_by']) ? $row['marked_by'] : 0,
-                    'crop_id'       => ($row['crop']) ? $row['crop'] : 0,
-                    'lat'           => ($row['imglat']) ? $row['imglat'] : 0,
-                    'lng'           => ($row['imglng']) ? $row['imglng'] : 0,
-                    'market_day_showcase'   => (strtoupper($row['market_day_showcase']) == 'TRUE') ? 1 : 0
-                );
-
-                if (!empty($row['update_on']) && !is_null($row['update_on'])) {
-                    $retailerRNAFields['update_on'] = $row['update_on'];
-                }
-
-                if (!empty($row['closed_on']) && !is_null($row['closed_on'])) {
-                    $retailerRNAFields['closed_on'] = $row['closed_on'];
-                }
-                
-                if (!empty($row['approved_on']) && !is_null($row['approved_on'])) {
-                    $retailerRNAFields['approved_on'] = $row['approved_on'];
-                }
-
-                if (!empty($row['execute_on']) && !is_null($row['execute_on'])) {
-                    $retailerRNAFields['execute_on'] = $row['execute_on'];
-                }
-
-                if (!empty($row['plan_on']) && !is_null($row['plan_on'])) {
-                    $retailerRNAFields['plan_on'] = $row['plan_on'];
-                }
-
-                if (!empty($row['date']) && !is_null($row['date'])) {
-                    $retailerRNAFields['date'] = $row['date'];
-                }
-
-                if (!empty($row['marked_on']) && !is_null($row['marked_on'])) {
-                    $retailerRNAFields['marked_on'] = $row['marked_on'];
-                }
-
-                // $strColumns = implode(', ', array_keys($retailerRNAFields));
-                // $strValues =  " '" . implode("', '", array_values($retailerRNAFields)) . "' ";
-                // $retailerInsertQuery .= "INSERT INTO $this->stagingTable ({$strColumns}) VALUES ({$strValues}); \n";
-
-                $data[] = $retailerRNAFields;
-            }
-
-            return [
-                'data' => $data,
-                'last_inserted' => $lastInserted
-            ];
-
-        } else {
+        //Get total count for chunking 
+        $totalCountQuery = $this->getDataFromFFAQuery(1);
+        $resultTotalCount = $this->exec_query($totalCountQuery);
+        if ($resultTotalCount->num_rows > 0) {
+            $resultTotalCountRow = $resultTotalCount->fetch_assoc();
+            $totalCount = $resultTotalCountRow['total_count'];
+        }
+        if($totalCount == 0) {
             $message = "No Retailer Visit Records to sync";
             return [
                 'data' => $message
             ];
         }
+        $query = $this->getDataFromFFAQuery();
+        $queryList = populate_chunked_query_list($query, $totalCount, $this->limitPerPage);
+        $data = [];
+        $country = $this->country['country_name'];
+        foreach ($queryList as $query) {
+            $result = $this->exec_query($query); 
+            if ($result->num_rows > 0) {
+                $rows = $result->fetch_all(MYSQLI_ASSOC);
+                $ffaIds = array_column($rows, 'id');
+                $territoryIds = array_column($rows, 'territory');
+                $deletedFFAList = $this->getDeletedFFA($ffaIds);
+                $zoneRegionList = $this->getZoneRegionList($territoryIds);
+                foreach($rows as $row) {
+
+                    $deleted = $this->isDeletedFFA($deletedFFAList, $row['id']);
+                    $territory = $row['territory'];
+
+                    $zoneRegion = $this->getZoneRegionSpecific($zoneRegionList, $territory);
+                    if($row['closed_by']!==null && $row['closed_by']==$row['created_by']){
+                        $supervisorId = $territory!==null ? $this->getSupervisor($row['id'],intval($territory),$row['team']) : null;
+                    }else{
+                        $supervisorId = $row['created_by'];
+                    }
+
+                    $temp_execute_decode = json_decode($row['temp_execute'], true);
+
+                    $temp_execute = (isset($temp_execute_decode) && $temp_execute_decode['client']['time']) ? $temp_execute_decode['client']['time'] : null;
+
+                    $objVN = new vn_charset_conversion();
+                    $hn = preg_replace("/[^a-zA-Z0-9]+/", "", html_entity_decode($row['host_name'], ENT_QUOTES));
+                    $hostname = (strtolower($country)=='vietnam') ? $objVN->convert($hn) : $hn;
+                    $team = (strtolower($country)=='vietnam') ? $objVN->convert($row['team']) : $row['team'];
+                    $products = (strtolower($country)=='vietnam') ? $objVN->convert($row['products']) : $row['products'];
+                    $participants = preg_replace('~[\x00\x0A\x0D\x1A\x22\x27\x5C]~u', '\\\$0', str_replace("'", "", $row['participant_list']));
+                    $participant_list = (strtolower($country)=='vietnam') ? $objVN->convert($participants) : $participants;
+
+                    $retailerRNAFields = array(
+                        'ffa_id'        => $row['id'],
+                        'deleted'       => $deleted ? '1' : '0',
+                        'report_table'  => $this->reportTable,
+                        'create_on'     => ($row['create_on']) ? $row['create_on'] : 0,
+                        // 'created_by'    => $row['created_by'],
+                        'created_by'    =>$supervisorId,
+                        'update_by'     => $row['update_by'],
+                        'plan_by'       => $row['plan_by'],
+                        'approved_by'   => $row['approved_by'],
+                        'closed_by'     => $row['closed_by'],
+                        'team'          => (strtolower($country)=='thailand') ? $team : trim($team),
+                        'host_name'     => $hostname,
+                        'host_phone'    => $row['host_phone'],
+                        'month'         => $row['month'],
+                        'status'        => $row['status'],
+                        'temp_execute'  => $temp_execute,
+                        'products'      => $products,
+                        'territory'     => $row['territory'],
+                        'zone'          => $zoneRegion['zone'],
+                        'region'        => $zoneRegion['region'],
+                        'participant_list' => $participant_list,
+                        'supervisor'    => $row['supervisor'],
+                        'marked_by'     => !is_null($row['marked_by']) ? $row['marked_by'] : 0,
+                        'crop_id'       => ($row['crop']) ? $row['crop'] : 0,
+                        'lat'           => ($row['imglat']) ? $row['imglat'] : 0,
+                        'lng'           => ($row['imglng']) ? $row['imglng'] : 0,
+                        'market_day_showcase'   => (strtoupper($row['market_day_showcase']) == 'TRUE') ? 1 : 0,
+                        'update_on'    => !empty($row['update_on']) && !is_null($row['update_on']) ? $row['update_on'] : NULL,
+                        'closed_on'    => !empty($row['closed_on']) && !is_null($row['closed_on']) ? $row['closed_on'] : NULL,
+                        'approved_on'    => !empty($row['approved_on']) && !is_null($row['approved_on']) ? $row['approved_on'] : NULL,
+                        'execute_on'    => !empty($row['execute_on']) && !is_null($row['execute_on']) ? $row['execute_on'] : NULL,
+                        'plan_on'    => !empty($row['update_on']) && !is_null($row['plan_on']) ? $row['plan_on'] : NULL,
+                        'date'    => !empty($row['date']) && !is_null($row['date']) ? $row['date'] : NULL,
+                        'marked_on'    => !empty($row['marked_on']) && !is_null($row['marked_on']) ? $row['marked_on'] : NULL,
+                    );
+                    // $strColumns = implode(', ', array_keys($retailerRNAFields));
+                    // $strValues =  " '" . implode("', '", array_values($retailerRNAFields)) . "' ";
+                    // $retailerInsertQuery .= "INSERT INTO $this->stagingTable ({$strColumns}) VALUES ({$strValues}); \n";
+
+                    $data[] = $retailerRNAFields;
+
+                }
+            }
+        }
+        return [
+            'data' => $data,
+            'last_inserted' => $lastInserted
+        ];
     }
 
     /**
@@ -225,77 +178,82 @@ class Retailer extends DB
         $count = 0;
         $objVN = new vn_charset_conversion();
         $country = $this->country['country_name'];
-        foreach ($data as $retailerRNAFields) {
+        $dataChunkeds = array_chunk($data, $this->limitChunked);
+        foreach ($dataChunkeds as $dataChunked) {
+            $ffaIds = array_column($dataChunked, 'ffa_id');
+            $ffaRecordStagingList = $this->getRecordStagingList($ffaIds);
+            $strColumns = implode(', ', array_keys($dataChunked[0]));
+            $insertQuery = "INSERT INTO [$this->schemaName].[$this->stagingTable] ({$strColumns}) VALUES";
+            $insertQueryValue = [];
+            foreach ($dataChunked as $retailerRNAFields) {
+                if (!empty($retailerRNAFields['create_on']) && !is_null($retailerRNAFields['create_on']) || !empty($retailerRNAFields['update_on']) && !is_null($retailerRNAFields['update_on'])) {
+                    // if (date('Y-m-d') == convert_to_datetime($retailerRNAFields['create_on'], 'Y-m-d') || date('Y-m-d') == convert_to_datetime($retailerRNAFields['update_on'], 'Y-m-d')) {
+                        $isInsertedStaging = $this->isInsertedStaging($ffaRecordStagingList, $retailerRNAFields['ffa_id']);
 
-            if (!empty($retailerRNAFields['create_on']) && !is_null($retailerRNAFields['create_on']) || !empty($retailerRNAFields['update_on']) && !is_null($retailerRNAFields['update_on'])) {
-                // if (date('Y-m-d') == convert_to_datetime($retailerRNAFields['create_on'], 'Y-m-d') || date('Y-m-d') == convert_to_datetime($retailerRNAFields['update_on'], 'Y-m-d')) {
-                    $results = $this->__checkRecordStaging($retailerRNAFields);
+                        if (!$isInsertedStaging) {
+                            $strValues =  populate_insert_values(array_values($retailerRNAFields));
+                            $insertQueryValue[] = "({$strValues})";
+                            $count++;
+                        } else {
+                            $plan_on = (isset($retailerRNAFields['plan_on'])) ? 'plan_on = ' . "'{$retailerRNAFields['plan_on']}'," : null;
+                            $approved_on = (isset($retailerRNAFields['approved_on'])) ? 'approved_on =' . "'{$retailerRNAFields['approved_on']}'," : null;
+                            $closed_on = (isset($retailerRNAFields['closed_on'])) ? 'closed_on =' . "'{$retailerRNAFields['closed_on']}'," : null;
+                            $date = isset($retailerRNAFields['date']) ? 'date =' . "'{$retailerRNAFields['date']}'," : null;
 
-                    if (sqlsrv_num_rows($results) < 1) {
-                            $strColumns = implode(', ', array_keys($retailerRNAFields));
-                            $strValues =  " '" . implode("', '", array_values($retailerRNAFields)) . "' ";
-                            $retailerInsertQuery = "INSERT INTO [$this->schemaName].[$this->stagingTable] ({$strColumns}) VALUES ({$strValues});";
+                            $ffaId = $retailerRNAFields['ffa_id'];
+                            $participantList = preg_replace('~[\x00\x0A\x0D\x1A\x22\x27\x5C]~u', '\\\$0', $retailerRNAFields['participant_list']);
+                            $temp_execute =  $retailerRNAFields['temp_execute'];
+                            $participantList = preg_replace('~[\x00\x0A\x0D\x1A\x22\x27\x5C]~u', '\\\$0', $retailerRNAFields['participant_list']);
 
-                            $result = $this->exec_query($retailerInsertQuery);
+                            $markedBy = !is_null($retailerRNAFields['marked_by']) ? $retailerRNAFields['marked_by'] : 0;
+                            $markedOn = isset($retailerRNAFields['marked_on']) ? 'marked_on =' . "'{$retailerRNAFields['marked_on']}'," : null;
+                            $team = (strtolower($country)=='vietnam') ? $objVN->convert( $retailerRNAFields['team']   ) : $retailerRNAFields['team'];
+                            $team = (strtolower($country)=='thailand') ? $team : trim($team);
+                            $mds = (strtoupper($retailerRNAFields['market_day_showcase']) == 'TRUE') ? 1 : 0;
 
+                            $demoUpdateQuery = "
+                            UPDATE [$this->schemaName].[$this->stagingTable]
+                            SET 
+                                update_on= '{$retailerRNAFields['update_on']}',
+                                update_by = '{$retailerRNAFields['update_by']}',
+                                {$plan_on}
+                                plan_by   = '{$retailerRNAFields['plan_by']}',
+                                {$approved_on}
+                                approved_by = '{$retailerRNAFields['approved_by']}',
+                                {$closed_on}
+                                closed_by      = '{$retailerRNAFields['closed_by']}',
+                                {$date}
+                                team      = '{$team}',
+                                deleted = {$retailerRNAFields['deleted']},
+                                host_name      = '{$retailerRNAFields['host_name']}',
+                                host_phone      = '{$retailerRNAFields['host_phone']}',
+                                month      = '{$retailerRNAFields['month']}',
+                                products      = '{$retailerRNAFields['products']}',
+                                territory      = '{$retailerRNAFields['territory']}',
+                                zone      = '{$retailerRNAFields['zone']}',
+                                region      = '{$retailerRNAFields['region']}',
+                                participant_list = '{$participantList}',
+                                supervisor = '{$retailerRNAFields['supervisor']}',
+                                marked_by = '{$markedBy}',
+                                {$markedOn}
+                                temp_execute = '{$temp_execute}',
+                                crop_id      = '{$retailerRNAFields['crop_id']}',
+                                lat      = '{$retailerRNAFields['lat']}',
+                                lng      = '{$retailerRNAFields['lng']}',
+                                market_day_showcase = {$mds}
+                            WHERE ffa_id = '$ffaId' AND report_table = '$this->reportTable';";
+
+                            $result =  $this->exec_query($demoUpdateQuery);
                             if ($result) {
-                                $count += 1;
+                                $count += sqlsrv_rows_affected($result);
                             }
-                    } else {
-                        $plan_on = (isset($retailerRNAFields['plan_on'])) ? 'plan_on = ' . "'{$retailerRNAFields['plan_on']}'," : null;
-                        $approved_on = (isset($retailerRNAFields['approved_on'])) ? 'approved_on =' . "'{$retailerRNAFields['approved_on']}'," : null;
-                        $closed_on = (isset($retailerRNAFields['closed_on'])) ? 'closed_on =' . "'{$retailerRNAFields['closed_on']}'," : null;
-                        $date = isset($retailerRNAFields['date']) ? 'date =' . "'{$retailerRNAFields['date']}'," : null;
-
-                        $ffaId = $retailerRNAFields['ffa_id'];
-                        $participantList = preg_replace('~[\x00\x0A\x0D\x1A\x22\x27\x5C]~u', '\\\$0', $retailerRNAFields['participant_list']);
-                        $temp_execute =  $retailerRNAFields['temp_execute'];
-                        $participantList = preg_replace('~[\x00\x0A\x0D\x1A\x22\x27\x5C]~u', '\\\$0', $retailerRNAFields['participant_list']);
-
-                        $markedBy = !is_null($retailerRNAFields['marked_by']) ? $retailerRNAFields['marked_by'] : 0;
-                        $markedOn = isset($retailerRNAFields['marked_on']) ? 'marked_on =' . "'{$retailerRNAFields['marked_on']}'," : null;
-                        $team = (strtolower($country)=='vietnam') ? $objVN->convert( $retailerRNAFields['team']   ) : $retailerRNAFields['team'];
-                        $team = (strtolower($country)=='thailand') ? $team : trim($team);
-                        $mds = (strtoupper($retailerRNAFields['market_day_showcase']) == 'TRUE') ? 1 : 0;
-
-                        $demoUpdateQuery = "
-                        UPDATE [$this->schemaName].[$this->stagingTable]
-                        SET 
-                            update_on= '{$retailerRNAFields['update_on']}',
-                            update_by = '{$retailerRNAFields['update_by']}',
-                            {$plan_on}
-                            plan_by   = '{$retailerRNAFields['plan_by']}',
-                            {$approved_on}
-                            approved_by = '{$retailerRNAFields['approved_by']}',
-                            {$closed_on}
-                            closed_by      = '{$retailerRNAFields['closed_by']}',
-                            {$date}
-                            team      = '{$team}',
-                            deleted = {$retailerRNAFields['deleted']},
-                            host_name      = '{$retailerRNAFields['host_name']}',
-                            host_phone      = '{$retailerRNAFields['host_phone']}',
-                            month      = '{$retailerRNAFields['month']}',
-                            products      = '{$retailerRNAFields['products']}',
-                            territory      = '{$retailerRNAFields['territory']}',
-                            zone      = '{$retailerRNAFields['zone']}',
-                            region      = '{$retailerRNAFields['region']}',
-                            participant_list = '{$participantList}',
-                            supervisor = '{$retailerRNAFields['supervisor']}',
-                            marked_by = '{$markedBy}',
-                            {$markedOn}
-                            temp_execute = '{$temp_execute}',
-                            crop_id      = '{$retailerRNAFields['crop_id']}',
-                            lat      = '{$retailerRNAFields['lat']}',
-                            lng      = '{$retailerRNAFields['lng']}',
-                            market_day_showcase = {$mds}
-                        WHERE ffa_id = '$ffaId' AND report_table = '$this->reportTable';";
-
-                        $result =  $this->exec_query($demoUpdateQuery);
-                        if ($result) {
-                            $count += sqlsrv_rows_affected($result);
                         }
-                    }
-                // }
+                    // }
+                }
+            }
+            if(!empty($insertQueryValue)) {
+                $insertQuery .= implode(',', $insertQueryValue);
+                $result = $this->exec_query($insertQuery);
             }
         }
 
@@ -391,5 +349,69 @@ class Retailer extends DB
         }
 
         return $supId;
+    }
+
+
+    public function getDataFromFFAQuery($isCount = 0) {
+
+        $getDataDateTime = strtotime('2023-01-01 00:00:00');
+
+        $select = "SELECT
+                    $this->ffaTable.id,
+                    UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME($this->ffaTable.create_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."')) as create_on,
+                    $this->ffaTable.created_by,
+                    UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME($this->ffaTable.update_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."')) as update_on,
+                    $this->ffaTable.update_by,
+                    UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME($this->ffaTable.plan_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."')) as plan_on,
+                    $this->ffaTable.plan_by,
+                    UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME($this->ffaTable.approved_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."')) as approved_on,
+                    $this->ffaTable.approved_by,
+                    UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME($this->ffaTable.closed_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."')) as closed_on,
+                    $this->ffaTable.closed_by,
+                    $this->ffaTable.date,
+                    $this->ffaTable.team,
+                    $this->ffaTable.host_name,
+                    $this->ffaTable.host_phone,
+                    $this->ffaTable.month,
+                    $this->ffaTable.status,
+                    $this->ffaTable.temp_execute,
+                    $this->ffaTable.products,
+                    $this->ffaTable.territory,
+                    $this->ffaTable.participant_list,
+                    $this->ffaTable.supervisor,
+                    $this->ffaTable.marked_by,
+                    $this->ffaTable.marked_on,
+                    $this->ffaTable.crop,
+                    tmp.lat as imglat,
+                    tmp.lng as imglng,
+                    $this->ffaPlanning.market_day_showcase";
+
+        if($isCount) {
+            $select = "SELECT COUNT(*) OVER () AS total_count";
+        }
+
+        $sql = "{$select}
+            FROM
+                $this->ffaTable
+            LEFT JOIN
+                $this->ffaPlanning
+            ON $this->ffaTable.plan_id = $this->ffaPlanning.id
+            LEFT JOIN
+            (
+                SELECT s.* FROM $this->ffaGps AS s ORDER BY s.id DESC
+            ) AS tmp ON $this->ffaTable.id = tmp.ref_id
+            AND tmp.category='retailer'
+            WHERE
+                UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME($this->ffaTable.create_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."'))>=$getDataDateTime
+            GROUP BY 
+                $this->ffaTable.id
+            order by
+                $this->ffaTable.create_on
+            desc";
+
+        if($isCount) {
+            $sql .= " LIMIT 1";
+        }
+        return $sql;
     }
 }

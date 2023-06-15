@@ -40,6 +40,7 @@ function run()
         $stagingResults = $staging->deleteStaging();
 
         //demo
+        echo Logs::success("ETL Demo Process Start: " . date('Y-m-d H:i:s') . "\n");
         $demo = new Demo($country);
         $demoResults = $demo->getDataFromFFA();
         
@@ -53,8 +54,10 @@ function run()
         } else {
             $demoCounts = $demoQueryResults;
         }
+        echo Logs::success("ETL Demo Process End: " . date('Y-m-d H:i:s') . "\n");
         
         //meeting
+        echo Logs::success("ETL Meeting Proces Start: " . date('Y-m-d H:i:s') . "\n");
         $meeting = new Meeting($country);
         $meetingResults = $meeting->getDataFromFFA();
         $meetingQueryResults = $meetingResults['data'];
@@ -68,7 +71,10 @@ function run()
             $meetingCounts = $meetingQueryResults;
         }
 
+        echo Logs::success("ETL Meeting Process End: " . date('Y-m-d H:i:s') . "\n");
+
         //retailer
+        echo Logs::success("ETL Retailer Proces Start: " . date('Y-m-d H:i:s') . "\n");
         $retailer = new Retailer($country);
         $retailerResults = $retailer->getDataFromFFA();
         $retailerQueryResults =  $retailerResults['data'];
@@ -80,8 +86,10 @@ function run()
         } else {
             $retailerCounts = $retailerQueryResults;
         }
+        echo Logs::success("ETL Meeting Process End: " . date('Y-m-d H:i:s') . "\n");
 
         //users
+        echo Logs::success("ETL User Process Start: " . date('Y-m-d H:i:s') . "\n");
         $users = new User($country);
         $usersResults = $users->getDataFromFFA();
         $userQueryResults = $usersResults['data'];
@@ -93,8 +101,10 @@ function run()
         } else {
             $usersCounts = $userQueryResults;
         }
+        echo Logs::success("ETL User Process end: " . date('Y-m-d H:i:s') . "\n");
 
         //geo_hierarchy_region
+        echo Logs::success("ETL Region Process Start: " . date('Y-m-d H:i:s') . "\n");
         $region = new Region($country);
         $regionResults = $region->getDataFromFFA();
 
@@ -107,8 +117,10 @@ function run()
         } else {
             $regionCounts = $regionQueryResults;
         }
+        echo Logs::success("ETL Region Process end: " . date('Y-m-d H:i:s') . "\n");
 
         //geo_hierarchy_zone
+        echo Logs::success("ETL Zone Process Start: " . date('Y-m-d H:i:s') . "\n");
         $zone = new Zone($country);
         $zoneResults = $zone->getDataFromFFA();
 
@@ -121,8 +133,10 @@ function run()
         } else {
             $zoneCounts = $zoneQueryResults;
         }
+        echo Logs::success("ETL Zone Process end: " . date('Y-m-d H:i:s') . "\n");
 
         //geo_hierarchy_territory
+        echo Logs::success("ETL Territory Process Start: " . date('Y-m-d H:i:s') . "\n");
         $territory = new Territory($country);
         $territoryResults = $territory->getDataFromFFA();
 
@@ -135,8 +149,10 @@ function run()
         } else {
             $territoryCounts = $territoryQueryResults;
         }
+        echo Logs::success("ETL Territory Process End: " . date('Y-m-d H:i:s') . "\n");
 
         //portal settings
+        echo Logs::success("ETL PortalSetting Process Start: " . date('Y-m-d H:i:s') . "\n");
         $portalSettings = new PortalSetting($country);
         $portalSettingsResults = $portalSettings->getDataFromFFA();
 
@@ -149,8 +165,10 @@ function run()
         } else {
             $portalSettingsCounts = $portalSettingsQueryResults;
         }
+        echo Logs::success("ETL PortalSetting Process End: " . date('Y-m-d H:i:s') . "\n");
 
         //teams
+        echo Logs::success("ETL Teams Process Start: " . date('Y-m-d H:i:s') . "\n");
         $teams = new Teams($country);
         $teamsResults = $teams->getDataFromFFA();
 
@@ -163,8 +181,10 @@ function run()
         } else {
             $teamsCounts = $teamsQueryResults;
         }
+        echo Logs::success("ETL Teams Process End: " . date('Y-m-d H:i:s') . "\n");
 
         //complaints
+        echo Logs::success("ETL Complaint Process Start: " . date('Y-m-d H:i:s') . "\n");
         $complaints = new Complaint($country);
         $complaintsResults = $complaints->getDataFromFFA();
 
@@ -177,8 +197,10 @@ function run()
         } else {
             $complaintsCounts = $complaintsQueryResults;
         }
+        echo Logs::success("ETL Teams Process End: " . date('Y-m-d H:i:s') . "\n");
 
         //crops
+        echo Logs::success("ETL Crop Process Start: " . date('Y-m-d H:i:s') . "\n");
         $crops = new Crop($country);
         $cropsResults = $crops->getDataFromFFA();
 
@@ -191,8 +213,10 @@ function run()
         } else {
             $cropsCounts = $cropsQueryResults;
         }
+        echo Logs::success("ETL Crop Process End: " . date('Y-m-d H:i:s') . "\n");
 
         //product
+        echo Logs::success("ETL Product Process Start: " . date('Y-m-d H:i:s') . "\n");
         $products = new Product($country);
         $productsResults = $products->getDataFromFFA();
 
@@ -205,8 +229,10 @@ function run()
         } else {
             $productsCounts = $productsQueryResults;
         }
+        echo Logs::success("ETL Product Process End: " . date('Y-m-d H:i:s') . "\n");     
 
         //target activities
+        echo Logs::success("ETL TargetActivity Process Start: " . date('Y-m-d H:i:s') . "\n");
         $targetActivity = new TargetActivity($country);
         $targetActivityResults = $targetActivity->getDataFromFFA();
 
@@ -219,6 +245,7 @@ function run()
         } else {
             $targetActivityCounts = $targetActivityQueryResults;
         }
+        echo Logs::success("ETL TargetActivity Process End: " . date('Y-m-d H:i:s') . "\n");
 
         $countryName = $country['country_name'];
 

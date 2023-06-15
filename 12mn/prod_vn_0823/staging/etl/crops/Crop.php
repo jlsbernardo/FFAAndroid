@@ -19,6 +19,10 @@ class Crop extends DB
 
     protected $schemaName = 'analytical';
 
+    protected $limitPerPage = 20000;
+
+    protected $limitChunked = 1000;
+
     public function __construct($country = '', $connection = 'ffa')
     {
         $this->country = $country;
@@ -32,39 +36,47 @@ class Crop extends DB
 
     public function getDataFromFFA()
     {
-        $sql = "SELECT
-            id,
-            caption
-        FROM
-            $this->ffaTable";  
-
-        $userInsertQuery = "";
-        $result = $this->exec_query($sql);
-        $data = [];
-        $country = $this->country['country_name'];
-        if ($result->num_rows > 0) {
-            while ($row = $result->fetch_assoc()) {
-                $objVN = new vn_charset_conversion();
-                $caption = (strtolower($country)=='vietnam') ? $objVN->convert(str_replace("'", "",$row['caption'])) : str_replace("'", "",$row['caption']);
-                $cropsRnaFields = array(
-                    'ffa_id'      => $row['id'],
-                    'deleted'     => 0,
-                    'report_table'=> $this->reportTable,
-                    'caption'     => $caption
-                );
-
-                $data[] = $cropsRnaFields;
-            }
-
-            return [
-                'data'  => $data
-            ];
-        } else {
+        //Get total count for chunking 
+        $totalCountQuery = $this->getDataFromFFAQuery(1);
+        $resultTotalCount = $this->exec_query($totalCountQuery);
+        if ($resultTotalCount->num_rows > 0) {
+            $resultTotalCountRow = $resultTotalCount->fetch_assoc();
+            $totalCount = $resultTotalCountRow['total_count'];
+        }
+        if($totalCount == 0) {
             $message = "No Crops Records to sync";
             return [
-                'data'  => $message
+                'data'  => $message,
             ];
         }
+            
+        $query = $this->getDataFromFFAQuery();
+        $queryList = populate_chunked_query_list($query, $totalCount, $this->limitPerPage);
+        $userInsertQuery = "";
+        $data = [];
+        $country = $this->country['country_name'];
+        foreach ($queryList as $query) {
+            $result = $this->exec_query($query); 
+            if ($result->num_rows > 0) {
+                $rows = $result->fetch_all(MYSQLI_ASSOC);
+                foreach($rows as $row) {
+                    $objVN = new vn_charset_conversion();
+                    $caption = (strtolower($country)=='vietnam') ? $objVN->convert(str_replace("'", "",$row['caption'])) : str_replace("'", "",$row['caption']);
+                    $cropsRnaFields = array(
+                        'ffa_id'      => $row['id'],
+                        'deleted'     => 0,
+                        'report_table'=> $this->reportTable,
+                        'caption'     => $caption
+                    );
+
+                    $data[] = $cropsRnaFields;
+                }
+            }
+        }
+
+        return [
+            'data'  => $data
+        ];
     }
 
     public function getStaging()
@@ -146,33 +158,41 @@ class Crop extends DB
     public function insertIntoStaging($data)
     {
         $count = 0;
+        $dataChunkeds = array_chunk($data, $this->limitChunked);
 
-        foreach ($data as $cropsRNAFields) {
-            $results = $this->__checkRecordStaging($cropsRNAFields);
-            if (sqlsrv_num_rows($results) < 1) {
-                $strColumns = implode(', ', array_keys($cropsRNAFields));
-                $strValues =  " '" . implode("', '", array_values($cropsRNAFields)) . "' ";
-                $complaintsInsertQuery = "INSERT INTO [$this->schemaName].[$this->stagingTable] ({$strColumns}) VALUES ({$strValues});";
+        foreach ($dataChunkeds as $dataChunked) {
+            $ffaIds = array_column($dataChunked, 'ffa_id');
+            $ffaRecordStagingList = $this->getRecordStagingList($ffaIds);
+            $strColumns = implode(', ', array_keys($dataChunked[0]));
+            $insertQuery = "INSERT INTO [$this->schemaName].[$this->stagingTable] ({$strColumns}) VALUES";
+            $insertQueryValue = [];
 
-                $result = $this->exec_query($complaintsInsertQuery);
-                if ($result) {
-                    $count += 1;
+            foreach ($dataChunked as $cropsRNAFields) {
+                $isInsertedStaging = $this->isInsertedStaging($ffaRecordStagingList, $cropsRNAFields['ffa_id']);
+                if (!$isInsertedStaging) {
+                    $strValues =  " '" . implode("', '", array_values($cropsRNAFields)) . "' ";
+                    $insertQueryValue[] = "({$strValues})";
+                    $count++;  
+                } else {
+                    $ffaId = $cropsRNAFields['ffa_id'];
+
+                    $cropsUpdateQuery = "
+                            UPDATE [$this->schemaName].[$this->stagingTable]
+                            SET 
+                                caption = '{$cropsRNAFields['caption']}',
+                                deleted      = 0
+                        WHERE [ffa_id] = '$ffaId' AND [report_table] = '$this->reportTable';";
+
+                    $result =  $this->exec_query($cropsUpdateQuery);
+                    if ($result) {
+                        $count += 1;
+                    }
                 }
-            } else {
-                
-                $ffaId = $cropsRNAFields['ffa_id'];
-
-                $cropsUpdateQuery = "
-                        UPDATE [$this->schemaName].[$this->stagingTable]
-                        SET 
-                            caption = '{$cropsRNAFields['caption']}'
-                            deleted      = 0
-                       WHERE [ffa_id] = '$ffaId' AND [report_table] = '$this->reportTable';";
-
-                $result =  $this->exec_query($cropsUpdateQuery);
-                if ($result) {
-                    $count += 1;
-                }
+            }
+    
+            if(!empty($insertQueryValue)) {
+                $insertQuery .= implode(',', $insertQueryValue);
+                $result = $this->exec_query($insertQuery);
             }
         }
 
@@ -266,5 +286,24 @@ class Crop extends DB
         }
         
         return false;
+    }
+
+    public function getDataFromFFAQuery($isCount = 0) {
+        $select = "SELECT
+                    id,
+                    caption";
+
+        if($isCount) {
+            $select = "SELECT COUNT(*) OVER () AS total_count";
+        }
+
+        $sql = "{$select}
+                FROM
+                $this->ffaTable";
+
+        if($isCount) {
+            $sql .= " LIMIT 1";
+        }
+        return $sql;
     }
 }
