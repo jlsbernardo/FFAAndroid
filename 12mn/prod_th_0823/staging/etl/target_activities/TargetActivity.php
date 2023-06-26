@@ -118,8 +118,8 @@ class TargetActivity extends DB
 
             } else {
                 $ffaId = $portalSettingRNAFields['ffa_id'];
-                $created_on = $row['create_on'] != 0 ? convert_to_datetime($row['create_on']) : NULL;
-                $updated_on = $row['update_on'] != 0 ? convert_to_datetime($row['update_on']) : NULL;
+                $created_on = (isset($portalSettingRNAFields['create_on']) && $portalSettingRNAFields['create_on'] != 0) ? convert_to_datetime($portalSettingRNAFields['create_on']) : NULL;
+                $updated_on = (isset($portalSettingRNAFields['update_on']) && $portalSettingRNAFields['update_on'] != 0) ? convert_to_datetime($portalSettingRNAFields['update_on']) : NULL;
                 $country = $this->country['country_name'];
 
                 $portalSettingUpdateQuery = "
@@ -130,11 +130,11 @@ class TargetActivity extends DB
                             [key]     = '{$portalSettingRNAFields['[key]']}',
                             [value]     = '{$portalSettingRNAFields['[value]']}',
                             [create_on] = '{$created_on}',
-                            [create_by] = '{$portalSettingRNAFields['created_by']}',
+                            [created_by] = '{$portalSettingRNAFields['[created_by]']}',
                             [update_on] = '{$updated_on}',
-                            [update_by] = '{$portalSettingRNAFields['update_by']}',
-                            [activity_type] = '{$portalSettingRNAFields['activity_type']}'
-                       WHERE [ffa_id] = '$ffaId' AND [report_table] = '$this->reportTable' AND [country] = '$country';";
+                            [update_by] = '{$portalSettingRNAFields['[update_by]']}',
+                            [activity_type] = '{$portalSettingRNAFields['[activity_type]']}'
+                       WHERE [ffa_id] = '$ffaId' AND [report_table] = '$this->reportTable';";
 
                 $result =  $this->exec_query($portalSettingUpdateQuery);
 

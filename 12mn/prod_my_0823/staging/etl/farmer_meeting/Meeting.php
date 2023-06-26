@@ -64,7 +64,7 @@ class Meeting extends DB
     {
         $checkLastRecord = $this->__checkLastRecordFFASync();
         $lastInserted = ($checkLastRecord) ? $checkLastRecord['last_insert_id'] : null;
-        $only2022_data = strtotime('2022-04-01 00:00:00');
+        $datePopulate = strtotime('-90 days');
         
         $sql = "SELECT
             $this->ffaTable.id,
@@ -102,7 +102,7 @@ class Meeting extends DB
         ) AS tmp ON $this->ffaTable.id = tmp.ref_id
         AND tmp.category='meeting'
         WHERE
-            UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME($this->ffaTable.create_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."'))>=$only2022_data
+            UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME($this->ffaTable.create_on), '".UTC_TIMEZONE."', '".CURRENT_TIMEZONE."'))>=$datePopulate
         GROUP BY 
             $this->ffaTable.id 
         order by

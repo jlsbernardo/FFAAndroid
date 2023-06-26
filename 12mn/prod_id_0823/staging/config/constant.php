@@ -30,6 +30,37 @@ $analyticalPassword = 'c4=OXa11_!e,';
 $analyticalDatabase = 'ffamssqlprod-reportingandanalytics';
 
 switch ($argv) {
+    case in_array('--qa', $argv):
+        $jktHostName = 'ffasqldbqa.mysql.database.azure.com';
+        $jktUserName = 'ffadbadminqa@ffasqldbqa';
+        $jktPassword = '5fQAR$sMWgKu';
+        $jktDatabase = 'ffa_asean_jkt_testv2';
+
+        $myHostName = 'ffasqldbqa.mysql.database.azure.com';
+        $myUserName = 'ffadbadminqa@ffasqldbqa';
+        $myPassword = '5fQAR$sMWgKu';
+        $myDatabase = 'ffa_asean_mys_test';
+
+        $phpHostName = 'ffasqldbqa.mysql.database.azure.com';
+        $phpUserName = 'ffadbadminqa@ffasqldbqa';
+        $phpPassword = '5fQAR$sMWgKu';
+        $phpDatabase = 'ffa_asean_php_test';
+
+        $thaHostName = 'ffasqldbqa.mysql.database.azure.com';
+        $thaUserName = 'ffadbadminqa@ffasqldbqa';
+        $thaPassword = '5fQAR$sMWgKu';
+        $thaDatabase = 'ffa_asean_tha_test';
+
+        $vnHostName = 'ffasqldbqa.mysql.database.azure.com';
+        $vnUserName = 'ffadbadminqa@ffasqldbqa';
+        $vnPassword = '5fQAR$sMWgKu';
+        $vnDatabase = 'ffa_asean_vn_test';
+
+        $analyticalHostName = 'ffa-mssql-svr-qa.database.windows.net';
+        $analyticalUserName = 'ffamssqlsvrqaadmin';
+        $analyticalPassword = '4kuZ96F99,2s';
+        $analyticalDatabase = 'ffa-mssql-qa-analytical';
+        break;
     case in_array('--dev', $argv):
         $jktHostName = 'ffa-sqlsvr-dev-impvprj.mysql.database.azure.com';
         $jktUserName = 'ffasqlsvrimpvprj@ffa-sqlsvr-dev-impvprj';
