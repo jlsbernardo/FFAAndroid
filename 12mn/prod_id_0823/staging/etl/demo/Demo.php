@@ -93,6 +93,7 @@ class Demo extends DB
             month,
             $this->ffaTable.status,
             temp_followup,
+            IF(JSON_VALID(temp_followup), UNIX_TIMESTAMP(CONVERT_TZ(FROM_UNIXTIME(JSON_UNQUOTE(JSON_EXTRACT(temp_followup,'$.client.time'))), '+0:00', '+8:00')), NULL) AS client_followup_submit_date_time,
             temp_execute,
             products,
             territory,
@@ -142,7 +143,8 @@ class Demo extends DB
                 $temp_followup_decode = json_decode($row['temp_followup'], true);
                 
                 $temp_execute = (isset($temp_execute_decode) && $temp_execute_decode['client']['time']) ? $temp_execute_decode['client']['time'] : null;
-                $temp_followup = (isset($temp_followup_decode) && $temp_followup_decode['client']['time']) ? $temp_followup_decode['client']['time'] : null;
+                // $temp_followup = (isset($temp_followup_decode) && $temp_followup_decode['client']['time']) ? $temp_followup_decode['client']['time'] : null;
+                $temp_followup = (isset($temp_followup_decode) && $temp_followup_decode['client']['time']) ? $row['client_followup_submit_date_time'] : null;
 
                 $objVN = new vn_charset_conversion();
                 $hn = preg_replace("/[^a-zA-Z0-9]+/", "", html_entity_decode(str_replace("'", "", $row['host_name']), ENT_QUOTES));
@@ -167,8 +169,8 @@ class Demo extends DB
                     'host_phone'    => $row['host_phone'],
                     'month'         => $row['month'],
                     'status'        => $row['status'],
-                    'temp_followup' => $temp_execute,
-                    'temp_execute'  => $temp_followup,
+                    'temp_followup' => $temp_followup,
+                    'temp_execute'  => $temp_execute,
                     'products'      => $products,
                     'territory'     => $row['territory'],
                     'zone'          => $zoneRegion['zone'],

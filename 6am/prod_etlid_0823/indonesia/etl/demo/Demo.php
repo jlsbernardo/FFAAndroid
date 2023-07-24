@@ -394,7 +394,7 @@ class Demo extends DB
                     $markedByF = !is_null($demoRNAField['marked_by_f']) ? $demoRNAField['marked_by_f'] : 0;
                     $markedOnE = isset($demoRNAField['marked_on_e']) ? 'marked_on_e =' . "'{$demoRNAField['marked_on_e']}'," : null;
                     $markedOnF = isset($demoRNAField['marked_on_f']) ? 'marked_on_f =' . "'{$demoRNAField['marked_on_f']}'," : null;
-
+                    $offBusinessHour = isset( $demoRNAField['off_business_hours']) ?  'off_business_hours ='."'{$demoRNAField['off_business_hours']}', " : null;
                     $demoUpdateQuery = "
                         UPDATE [$this->schemaName].[$this->reportTable]
                         SET 
@@ -427,6 +427,7 @@ class Demo extends DB
                             {$markedOnF}
                             {$client_execute_submit_date_time}
                             {$client_followup_submit_date_time}
+                            {$offBusinessHour}
                             region_id      = '{$demoRNAField['region_id']}',
                             crop_id        = '{$demoRNAField['crop_id']}',
                             lat      = '{$demoRNAField['lat']}',
@@ -495,12 +496,12 @@ class Demo extends DB
     {
         $workingHoursSQL = "SELECT
            [id],
-           [module]
+           [module],
             [key],
             [value]
         FROM
             [$this->schemaName].[$this->stagingTable]
-        WHERE [module] = 'working-hours'";
+        WHERE [module] = 'working-hours' AND [key] = 'working-hours-demo'";
 
         $workingHours = $this->exec_query($workingHoursSQL);
 
